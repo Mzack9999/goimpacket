@@ -41,6 +41,10 @@ proxychains gopacket-secretsdump 'domain/user:password@target'
 proxychains gopacket-smbclient -k -no-pass 'domain/user@dc.domain.local'
 ```
 
+## Documentation
+
+See the [Library Developer Guide](https://github.com/mandiant/gopacket/wiki) for full API documentation, code examples, and architecture overview for building custom tools on top of gopacket's 24 protocol packages.
+
 ## Tools (63)
 
 ### Remote Execution
@@ -209,7 +213,7 @@ sudo gopacket-ntlmrelayx -t ldaps://dc01.corp.local --delegate-access
 
 ## Library
 
-The `pkg/` directory contains 24 reusable protocol packages that can be imported independently:
+The `pkg/` directory contains 24 reusable protocol packages that can be imported independently.
 
 | Package | Description |
 |---------|-------------|
