@@ -23,10 +23,10 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/mapi"
-	"gopacket/pkg/rpch"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/mapi"
+	"github.com/Mzack9999/goimpacket/pkg/rpch"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 
 	"github.com/google/uuid"
 )

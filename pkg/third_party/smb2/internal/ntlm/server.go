@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strings"
 
-	"gopacket/pkg/third_party/smb2/internal/utf16le"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/smb2/internal/utf16le"
 )
 
 // NTLM v2 server

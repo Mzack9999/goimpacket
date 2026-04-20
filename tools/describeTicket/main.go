@@ -31,7 +31,7 @@ import (
 	"github.com/jcmturner/gokrb5/v8/messages"
 	"github.com/jcmturner/gokrb5/v8/types"
 
-	"gopacket/pkg/kerberos"
+	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 )
 
 // ASN.1 structures for decrypting ticket enc-part (from ticketer.go)

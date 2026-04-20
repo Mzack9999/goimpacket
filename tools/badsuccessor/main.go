@@ -22,10 +22,10 @@ import (
 	"os"
 	"strings"
 
-	"gopacket/pkg/flags"
-	"gopacket/pkg/ldap"
-	"gopacket/pkg/security"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/ldap"
+	"github.com/Mzack9999/goimpacket/pkg/security"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 
 	goldap "github.com/go-ldap/ldap/v3"
 )

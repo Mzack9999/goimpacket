@@ -25,11 +25,11 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/srvsvc"
-	"gopacket/pkg/flags"
-	"gopacket/pkg/session"
-	"gopacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/srvsvc"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/smb"
 )
 
 func main() {

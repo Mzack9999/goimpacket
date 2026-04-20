@@ -24,10 +24,10 @@ import (
 	"strings"
 	"time"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/epmapper"
-	"gopacket/pkg/transport"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/epmapper"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // MGMT interface UUID: afa8bd80-7d8a-11c9-bef4-08002b102989

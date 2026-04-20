@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"unicode/utf16"
 
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 )
 
 // WKSSVC UUID: 6BFFD098-A112-3610-9833-46C3F87E345A v1.0

@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"log"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 )
 
 // EnumerationClient wraps the TermSrvEnumeration interface (LSM_API_service pipe).

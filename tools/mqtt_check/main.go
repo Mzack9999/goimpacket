@@ -19,9 +19,9 @@ import (
 	"fmt"
 	"os"
 
-	"gopacket/pkg/flags"
-	"gopacket/pkg/mqtt"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/mqtt"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 )
 
 func main() {

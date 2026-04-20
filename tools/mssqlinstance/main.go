@@ -20,7 +20,7 @@ import (
 	"os"
 	"time"
 
-	"gopacket/pkg/tds"
+	"github.com/Mzack9999/goimpacket/pkg/tds"
 )
 
 var (

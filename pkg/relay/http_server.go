@@ -24,7 +24,7 @@ import (
 	"strings"
 	"sync"
 
-	"gopacket/internal/build"
+	"github.com/Mzack9999/goimpacket/internal/build"
 )
 
 // HTTPRelayServer listens for incoming HTTP connections and captures

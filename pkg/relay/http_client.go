@@ -25,7 +25,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopacket/internal/build"
+	"github.com/Mzack9999/goimpacket/internal/build"
 )
 
 // HTTPRelayClient implements ProtocolClient for relaying NTLM auth to HTTP/HTTPS targets.

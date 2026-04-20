@@ -20,11 +20,11 @@ import (
 	"os"
 	"strings"
 
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/svcctl"
-	"gopacket/pkg/flags"
-	"gopacket/pkg/session"
-	"gopacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/svcctl"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/smb"
 )
 
 func main() {

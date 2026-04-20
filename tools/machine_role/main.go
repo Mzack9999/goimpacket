@@ -21,10 +21,10 @@ import (
 	"os"
 	"unicode/utf16"
 
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/flags"
-	"gopacket/pkg/session"
-	"gopacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/smb"
 )
 
 // MS-DSSP interface UUID: 3919286A-B10C-11D0-9BA8-00C04FD92EF5 v0.0

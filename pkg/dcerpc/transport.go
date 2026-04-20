@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/third_party/smb2"
-	"gopacket/pkg/transport"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/smb2"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 	"log"
 )
 

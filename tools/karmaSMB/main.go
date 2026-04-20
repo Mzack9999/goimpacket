@@ -31,7 +31,7 @@ import (
 	"sync"
 	"time"
 
-	"gopacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 )
 
 var (

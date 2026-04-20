@@ -1,9 +1,9 @@
-# gopacket ntlmrelayx — Known Issues
+# goimpacket ntlmrelayx — Known Issues
 
 ## How to Report Issues
 
 When reporting, please include:
-- Exact command line used (both gopacket and coercion command)
+- Exact command line used (both goimpacket and coercion command)
 - Full output with `-debug` flag enabled
 - Target OS version and patch level if known
 - Whether the same operation works with Impacket's ntlmrelayx

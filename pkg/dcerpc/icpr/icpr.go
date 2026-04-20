@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"unicode/utf16"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 	"log"
 )
 

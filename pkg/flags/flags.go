@@ -21,8 +21,8 @@ import (
 	"sort"
 	"strings"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 )
 
 // ExtraUsageLine is appended to the "Usage: tool [options] target" line (e.g. "[maxRid]")

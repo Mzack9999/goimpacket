@@ -25,11 +25,11 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"gopacket/pkg/dcerpc/gkdi"
-	"gopacket/pkg/dpaping"
-	"gopacket/pkg/flags"
-	"gopacket/pkg/ldap"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/gkdi"
+	"github.com/Mzack9999/goimpacket/pkg/dpaping"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/ldap"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 )
 
 var (

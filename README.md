@@ -1,16 +1,23 @@
-# gopacket
+# goimpacket
 
 A complete Go implementation of [Impacket](https://github.com/fortra/impacket) - 63 tools and 24 library packages for Windows network protocol interaction, Active Directory enumeration, and attack execution. Built as a native Go framework so you can compile once and run anywhere without Python dependencies.
 
-> **Beta Release - Highly Experimental.** gopacket is under active development. Core tools have been tested against Active Directory lab environments, but edge cases and protocol quirks are expected. If something isn't working, please test the same operation with Impacket side-by-side and include both outputs in your bug report. This helps us quickly identify whether it's a gopacket-specific issue or a shared protocol limitation.
+This is a fork of [mandiant/gopacket](https://github.com/mandiant/gopacket) that
+swaps the upstream `github.com/google/gopacket` dependency for the cgo-free
+fork at [github.com/Mzack9999/gopacket](https://github.com/Mzack9999/gopacket),
+which loads `libpcap` dynamically at runtime via
+[`purego`](https://github.com/ebitengine/purego) instead of cgo. This removes
+the libpcap development headers from the build-time toolchain.
+
+> **Beta Release - Highly Experimental.** goimpacket is under active development. Core tools have been tested against Active Directory lab environments, but edge cases and protocol quirks are expected. If something isn't working, please test the same operation with Impacket side-by-side and include both outputs in your bug report. This helps us quickly identify whether it's a goimpacket-specific issue or a shared protocol limitation.
 
 ## Installation
 
 ```bash
-git clone https://github.com/mandiant/gopacket
-cd gopacket
+git clone https://github.com/Mzack9999/goimpacket
+cd goimpacket
 
-# Build and install all tools as gopacket-<toolname> on your PATH
+# Build and install all tools as goimpacket-<toolname> on your PATH
 ./install.sh
 
 # Or just build without installing
@@ -20,12 +27,17 @@ cd gopacket
 make build
 ```
 
-Requires Go 1.24.13+, GCC, and libpcap development headers
-(install with `apt install build-essential libpcap-dev` on Debian/Ubuntu/Kali,
-or `yum install gcc libpcap-devel` on RHEL/CentOS, or `brew install libpcap` on macOS).
+Requires Go 1.24.13+ and GCC
+(install with `apt install build-essential` on Debian/Ubuntu/Kali,
+or `yum install gcc` on RHEL/CentOS; GCC ships with the Xcode Command Line
+Tools on macOS).
 
-The libpcap headers are only needed by the `sniff` and `split` tools - if
-libpcap is missing, `install.sh` will skip those two and build the rest.
+GCC is needed for the proxychains hooks in `pkg/transport` (see below).
+The `sniff` and `split` tools no longer require `libpcap-dev` at build time -
+the cgo-free `gopacket` fork loads `libpcap` dynamically with `purego` -
+but you still need a `libpcap` shared library installed at runtime to use
+those two tools (`apt install libpcap0.8`, `yum install libpcap`, or
+`brew install libpcap`).
 
 ### Platform Support
 
@@ -43,16 +55,16 @@ To uninstall:
 
 ## Proxychains Support
 
-All gopacket tools work through proxychains. Go binaries normally bypass proxychains because Go's runtime handles DNS and networking internally, skipping the `LD_PRELOAD` hooks that proxychains relies on. gopacket works around this by linking against the system C library for network operations, allowing proxychains to intercept connections normally.
+All goimpacket tools work through proxychains. Go binaries normally bypass proxychains because Go's runtime handles DNS and networking internally, skipping the `LD_PRELOAD` hooks that proxychains relies on. goimpacket works around this by linking against the system C library for network operations, allowing proxychains to intercept connections normally.
 
 ```bash
-proxychains gopacket-secretsdump 'domain/user:password@target'
-proxychains gopacket-smbclient -k -no-pass 'domain/user@dc.domain.local'
+proxychains goimpacket-secretsdump 'domain/user:password@target'
+proxychains goimpacket-smbclient -k -no-pass 'domain/user@dc.domain.local'
 ```
 
 ## Documentation
 
-See the [Library Developer Guide](https://github.com/mandiant/gopacket/wiki) for full API documentation, code examples, and architecture overview for building custom tools on top of gopacket's 24 protocol packages.
+See the [Library Developer Guide](https://github.com/Mzack9999/goimpacket/wiki) for full API documentation, code examples, and architecture overview for building custom tools on top of goimpacket's 24 protocol packages.
 
 ## Tools (63)
 
@@ -177,13 +189,13 @@ All network tools support three authentication methods:
 
 ```bash
 # Password
-gopacket-secretsdump 'domain/user:password@target'
+goimpacket-secretsdump 'domain/user:password@target'
 
 # NTLM hash (pass-the-hash)
-gopacket-secretsdump -hashes ':nthash' 'domain/user@target'
+goimpacket-secretsdump -hashes ':nthash' 'domain/user@target'
 
 # Kerberos (pass-the-ticket)
-KRB5CCNAME=ticket.ccache gopacket-secretsdump -k -no-pass 'domain/user@target'
+KRB5CCNAME=ticket.ccache goimpacket-secretsdump -k -no-pass 'domain/user@target'
 ```
 
 ### Common Flags
@@ -202,22 +214,22 @@ KRB5CCNAME=ticket.ccache gopacket-secretsdump -k -no-pass 'domain/user@target'
 
 ```bash
 # Dump domain hashes via DCSync
-gopacket-secretsdump 'corp.local/admin:Password1@dc01.corp.local'
+goimpacket-secretsdump 'corp.local/admin:Password1@dc01.corp.local'
 
 # Interactive SMB shell
-gopacket-smbclient -hashes ':aabbccdd...' 'corp.local/admin@fileserver'
+goimpacket-smbclient -hashes ':aabbccdd...' 'corp.local/admin@fileserver'
 
 # Kerberoast
-gopacket-getuserspns 'corp.local/user:pass@dc01.corp.local'
+goimpacket-getuserspns 'corp.local/user:pass@dc01.corp.local'
 
 # Golden ticket
-gopacket-ticketer -nthash <krbtgt_hash> -domain-sid S-1-5-21-... -domain corp.local admin
+goimpacket-ticketer -nthash <krbtgt_hash> -domain-sid S-1-5-21-... -domain corp.local admin
 
 # NTLM relay with SOCKS proxy
-sudo gopacket-ntlmrelayx -t smb://target -socks
+sudo goimpacket-ntlmrelayx -t smb://target -socks
 
 # LDAP relay for RBCD
-sudo gopacket-ntlmrelayx -t ldaps://dc01.corp.local --delegate-access
+sudo goimpacket-ntlmrelayx -t ldaps://dc01.corp.local --delegate-access
 ```
 
 ## Library
@@ -244,7 +256,7 @@ The `pkg/` directory contains 24 reusable protocol packages that can be imported
 
 ## Missing Features (vs Impacket)
 
-gopacket aims for full Impacket parity. The following are not yet implemented:
+goimpacket aims for full Impacket parity. The following are not yet implemented:
 
 **Relay protocol clients:**
 - IMAP relay client + attack (requires Exchange/IMAP server)
@@ -264,7 +276,7 @@ These gaps are low priority - most require niche infrastructure to test or are o
 
 ## Known Limitations
 
-These are protocol-level limitations shared with Impacket, not gopacket bugs:
+These are protocol-level limitations shared with Impacket, not goimpacket bugs:
 
 - **SMB to LDAPS relay** fails on patched DCs due to NTLM MIC validation (post-CVE-2019-1040). Use HTTP coercion instead.
 - **WinRM relay** blocked by EPA (Extended Protection for Authentication) on patched Server 2019+.
@@ -279,8 +291,8 @@ See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for detailed information on each issue an
 
 ### Why we ask you to test with Impacket first
 
-Because gopacket implements the same wire protocols as Impacket, a large
-fraction of "bugs" turn out to be **environmental**, not gopacket-specific -
+Because goimpacket implements the same wire protocols as Impacket, a large
+fraction of "bugs" turn out to be **environmental**, not goimpacket-specific -
 patched DCs, LDAP signing requirements, EPA, PKT_INTEGRITY, SMB signing,
 NTLM MIC validation post-CVE-2019-1040, missing SPNs, time skew, DNS quirks,
 firewall rules, and so on. Running the same operation with Impacket side by
@@ -289,7 +301,7 @@ side removes the environment from the equation:
 - **If Impacket fails the same way**, the issue is almost always
   environmental and is likely already documented in
   [KNOWN_ISSUES.md](KNOWN_ISSUES.md). No bug report needed.
-- **If Impacket succeeds where gopacket fails**, that's a real gopacket bug
+- **If Impacket succeeds where goimpacket fails**, that's a real goimpacket bug
   and exactly what we want to hear about.
 
 This single triage step saves a lot of round-trips, so please don't skip it.
@@ -297,7 +309,7 @@ This single triage step saves a lot of round-trips, so please don't skip it.
 ### Filing a bug report
 
 1. Run the same operation with Impacket and note whether it succeeds or fails
-2. Re-run gopacket with `-debug` and capture the full output
+2. Re-run goimpacket with `-debug` and capture the full output
 3. **Anonymize anything sensitive before posting.** GitHub issues are public.
    Strip or replace real hostnames, IP addresses, usernames, password hashes,
    Kerberos tickets, domain names, SIDs, and any output line that could be
@@ -305,16 +317,16 @@ This single triage step saves a lot of round-trips, so please don't skip it.
    and `dc01.corp.internal` → `dc01.example.local` is fine - keep the
    structure of the data, just not the identifying values. **If in doubt,
    redact it.**
-4. Open a [GitHub issue](https://github.com/mandiant/gopacket/issues/new) and include:
-   - Both outputs (gopacket and Impacket), as text not screenshots, anonymized
+4. Open a [GitHub issue](https://github.com/Mzack9999/goimpacket/issues/new) and include:
+   - Both outputs (goimpacket and Impacket), as text not screenshots, anonymized
    - The exact command line you ran (anonymized)
    - Target OS, AD functional level, and any relevant hardening
      (signing, EPA, channel binding, patch level)
-   - gopacket version / commit hash
+   - goimpacket version / commit hash
 
 ### Feature requests
 
-Open a [GitHub issue](https://github.com/mandiant/gopacket/issues/new) describing the use case
+Open a [GitHub issue](https://github.com/Mzack9999/goimpacket/issues/new) describing the use case
 and the Impacket equivalent (if any). If the feature is on the
 "Missing Features" list above, mention which one - it helps us prioritize.
 
@@ -336,7 +348,7 @@ Impacket in real-world intrusions. Most defensive tooling and detection
 logic was built around Impacket's Python-based network behavior, and that
 coverage is eroding as the attacker ecosystem shifts to compiled languages.
 
-gopacket exists in part to help the security community get ahead of this
+goimpacket exists in part to help the security community get ahead of this
 shift. By providing an open-source, readable Go implementation of the
 same protocols and techniques, defenders and detection engineers can:
 
@@ -350,7 +362,7 @@ same protocols and techniques, defenders and detection engineers can:
   at the network layer
 
 The gap between attacker tooling and defender visibility is widest when
-new tooling stays private. Open-sourcing gopacket narrows that gap.
+new tooling stays private. Open-sourcing goimpacket narrows that gap.
 
 ## Notes
 
@@ -364,4 +376,4 @@ new tooling stays private. Open-sourcing gopacket narrows that gap.
 
 Released under the [Apache License 2.0](LICENSE).
 
-gopacket is a clean Go reimplementation of [Impacket](https://github.com/fortra/impacket); see [NOTICE](NOTICE) for full third-party acknowledgments.
+goimpacket is a clean Go reimplementation of [Impacket](https://github.com/fortra/impacket); see [NOTICE](NOTICE) for full third-party acknowledgments.

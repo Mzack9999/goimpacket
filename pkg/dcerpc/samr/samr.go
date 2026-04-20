@@ -27,8 +27,8 @@ import (
 
 	"golang.org/x/crypto/md4"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 )
 
 // SAMR UUID: 12345778-1234-ABCD-EF00-0123456789AC v1.0

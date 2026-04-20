@@ -16,8 +16,8 @@ package ldap
 
 import (
 	goldap "github.com/go-ldap/ldap/v3"
-	"gopacket/pkg/session"
-	"gopacket/pkg/transport"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // Client wraps the underlying LDAP connection to provide a unified interface.

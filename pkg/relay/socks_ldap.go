@@ -24,7 +24,7 @@ import (
 
 	ber "github.com/go-asn1-ber/asn1-ber"
 
-	"gopacket/internal/build"
+	"github.com/Mzack9999/goimpacket/internal/build"
 )
 
 // LDAP message tags

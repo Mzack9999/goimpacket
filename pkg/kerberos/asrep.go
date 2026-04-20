@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopacket/pkg/transport"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 
 	"github.com/jcmturner/gokrb5/v8/config"
 	"github.com/jcmturner/gokrb5/v8/iana/nametype"

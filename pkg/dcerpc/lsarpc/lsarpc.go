@@ -23,8 +23,8 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 )
 
 // MS-LSAT (LSA Translation Methods)

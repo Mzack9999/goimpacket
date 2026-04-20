@@ -22,11 +22,11 @@ import (
 	"log"
 	"math/big"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc/header"
-	"gopacket/pkg/session"
-	"gopacket/pkg/structure"
-	"gopacket/pkg/third_party/smb2"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/header"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/structure"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/smb2"
 )
 
 type Client struct {

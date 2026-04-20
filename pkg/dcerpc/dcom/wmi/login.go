@@ -19,9 +19,9 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/dcom"
-	"gopacket/pkg/utf16le"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/dcom"
+	"github.com/Mzack9999/goimpacket/pkg/utf16le"
 )
 
 // IWbemLevel1Login wraps the WMI login interface

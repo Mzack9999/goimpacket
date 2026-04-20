@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"log"
 
-	"gopacket/internal/build"
+	"github.com/Mzack9999/goimpacket/internal/build"
 )
 
 // RelayPipeTransport implements dcerpc.Transport over a raw SMB2 relay pipe.

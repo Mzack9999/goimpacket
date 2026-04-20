@@ -25,7 +25,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopacket/internal/build"
+	"github.com/Mzack9999/goimpacket/internal/build"
 )
 
 // WinRMRelayClient implements ProtocolClient for relaying NTLM auth to WinRM targets.

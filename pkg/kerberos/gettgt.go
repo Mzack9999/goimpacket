@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"gopacket/pkg/transport"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 	"unicode/utf16"
 
 	"github.com/jcmturner/gokrb5/v8/config"

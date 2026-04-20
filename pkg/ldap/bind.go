@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopacket/pkg/kerberos"
+	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 )
 
 // Login attempts to bind to the LDAP server using the session credentials.

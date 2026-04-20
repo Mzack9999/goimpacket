@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"unicode/utf16"
 
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 )
 
 // KeyInfo contains information about a registry key

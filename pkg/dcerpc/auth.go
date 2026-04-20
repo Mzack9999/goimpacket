@@ -20,9 +20,9 @@ import (
 	"log"
 	"strings"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/ntlm"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/ntlm"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 )
 
 // RPCAuthHandler is the interface for RPC authentication handlers.

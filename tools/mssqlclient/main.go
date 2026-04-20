@@ -21,9 +21,9 @@ import (
 	"os"
 	"strings"
 
-	"gopacket/pkg/flags"
-	"gopacket/pkg/session"
-	"gopacket/pkg/tds"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/tds"
 )
 
 var (

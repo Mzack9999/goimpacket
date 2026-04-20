@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"gopacket/internal/build"
+	"github.com/Mzack9999/goimpacket/internal/build"
 )
 
 // SOCKSServer implements a SOCKS5 proxy that routes connections through relayed sessions.

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"unicode/utf16"
 
-	"gopacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 )
 
 // MS-NRPC (Netlogon Remote Protocol)

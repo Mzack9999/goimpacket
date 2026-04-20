@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 
-	"gopacket/pkg/third_party/smb2"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/smb2"
 )
 
 func Example() {

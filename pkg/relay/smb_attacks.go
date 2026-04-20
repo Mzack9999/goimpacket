@@ -21,10 +21,10 @@ import (
 	"strings"
 	"time"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/samr"
-	"gopacket/pkg/dcerpc/tsch"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/samr"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/tsch"
 )
 
 // EnumLocalAdminsAttack enumerates local administrators via SAMR.

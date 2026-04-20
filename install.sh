@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2026 Google LLC
+# Copyright 2026 Mzack9999
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# gopacket installer
-# Builds all tools and installs them as gopacket-<toolname> on your PATH
+# goimpacket installer
+# Builds all tools and installs them as goimpacket-<toolname> on your PATH
 #
 
 set -e
@@ -22,6 +23,7 @@ set -e
 # Default install directory
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 BUILD_DIR="./bin"
+TOOL_PREFIX="goimpacket"
 
 # Colors
 RED='\033[0;31m'
@@ -35,7 +37,7 @@ usage() {
     echo "Options:"
     echo "  --prefix DIR    Install to DIR (default: /usr/local/bin)"
     echo "  --build-only    Build but don't install"
-    echo "  --uninstall     Remove installed gopacket tools"
+    echo "  --uninstall     Remove installed goimpacket tools"
     echo "  -h, --help      Show this help"
     echo ""
     echo "Environment:"
@@ -73,9 +75,9 @@ done
 
 # Uninstall mode
 if $uninstall; then
-    echo "Removing gopacket tools from ${INSTALL_DIR}..."
+    echo "Removing ${TOOL_PREFIX} tools from ${INSTALL_DIR}..."
     count=0
-    for f in "${INSTALL_DIR}"/gopacket-*; do
+    for f in "${INSTALL_DIR}"/${TOOL_PREFIX}-*; do
         if [ -f "$f" ]; then
             echo "  removing $(basename "$f")"
             rm -f "$f"
@@ -83,7 +85,7 @@ if $uninstall; then
         fi
     done
     if [ $count -eq 0 ]; then
-        echo "No gopacket tools found in ${INSTALL_DIR}"
+        echo "No ${TOOL_PREFIX} tools found in ${INSTALL_DIR}"
     else
         echo -e "${GREEN}Removed ${count} tools${NC}"
     fi
@@ -97,26 +99,13 @@ if ! command -v go &>/dev/null; then
     exit 1
 fi
 
+# GCC is required for the proxychains hooks in pkg/transport (cgo).
+# libpcap headers are NOT required: the cgo-free github.com/Mzack9999/gopacket
+# fork loads libpcap dynamically at runtime via purego.
 if ! command -v gcc &>/dev/null; then
     echo -e "${RED}Error: gcc is not installed${NC}"
     echo "Install with: apt install build-essential (Debian/Ubuntu) or yum install gcc (RHEL/CentOS)"
     exit 1
-fi
-
-# Check for libpcap headers (needed only by sniff and split tools)
-HAS_LIBPCAP=true
-if ! [ -f /usr/include/pcap.h ] \
-   && ! [ -f /usr/include/pcap/pcap.h ] \
-   && ! [ -f /usr/local/include/pcap.h ] \
-   && ! [ -f /opt/homebrew/include/pcap.h ] \
-   && ! pkg-config --exists libpcap 2>/dev/null; then
-    HAS_LIBPCAP=false
-    echo -e "${YELLOW}Warning: libpcap development headers not found${NC}"
-    echo "  The sniff and split tools will be skipped."
-    echo "  Install with: apt install libpcap-dev (Debian/Ubuntu/Kali)"
-    echo "             or yum install libpcap-devel (RHEL/CentOS)"
-    echo "             or brew install libpcap (macOS)"
-    echo ""
 fi
 
 # Determine script directory (where go.mod lives)
@@ -124,7 +113,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [ ! -f go.mod ]; then
-    echo -e "${RED}Error: go.mod not found. Run this script from the gopacket directory.${NC}"
+    echo -e "${RED}Error: go.mod not found. Run this script from the goimpacket directory.${NC}"
     exit 1
 fi
 
@@ -132,7 +121,7 @@ fi
 tools=($(ls tools/))
 total=${#tools[@]}
 
-echo "gopacket installer"
+echo "goimpacket installer"
 echo "  Tools:   ${total}"
 echo "  Build:   ${BUILD_DIR}/"
 if ! $build_only; then
@@ -140,22 +129,39 @@ if ! $build_only; then
 fi
 echo ""
 
+# Linker flags differ between platforms:
+#  - Linux (GNU ld): statically link libgcc so the binary doesn't depend on a
+#    specific libgcc.so on the target system.
+#  - macOS (clang/ld64): doesn't support -static-libgcc; use the default
+#    external linker with no extra flags.
+case "$(uname -s)" in
+    Linux)
+        LDFLAGS='-linkmode external -extldflags "-static-libgcc"'
+        ;;
+    Darwin)
+        LDFLAGS=''
+        ;;
+    *)
+        LDFLAGS=''
+        ;;
+esac
+
 # Build
 echo "Building ${total} tools..."
 mkdir -p "${BUILD_DIR}"
 
 failed=0
-skipped=0
 for tool in "${tools[@]}"; do
-    if ! $HAS_LIBPCAP && { [ "$tool" = "sniff" ] || [ "$tool" = "split" ]; }; then
-        echo -e "  ${tool}... ${YELLOW}skipped (libpcap-dev not installed)${NC}"
-        skipped=$((skipped + 1))
-        continue
-    fi
     echo -n "  ${tool}... "
-    if err=$(CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
-        -ldflags '-linkmode external -extldflags "-static-libgcc"' \
-        "./tools/${tool}" 2>&1); then
+    if [ -n "$LDFLAGS" ]; then
+        err=$(CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
+            -ldflags "$LDFLAGS" \
+            "./tools/${tool}" 2>&1)
+    else
+        err=$(CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
+            "./tools/${tool}" 2>&1)
+    fi
+    if [ $? -eq 0 ]; then
         echo -e "${GREEN}ok${NC}"
     else
         echo -e "${RED}failed${NC}"
@@ -169,20 +175,22 @@ if [ $failed -gt 0 ]; then
     exit 1
 fi
 
-built=$((total - skipped))
-echo -e "\n${GREEN}Built ${built}/${total} tools successfully${NC}"
-if [ $skipped -gt 0 ]; then
-    echo -e "${YELLOW}Skipped ${skipped} tool(s) — install libpcap-dev to enable them${NC}"
-fi
+echo -e "\n${GREEN}Built ${total}/${total} tools successfully${NC}"
+echo -e "${YELLOW}Note:${NC} the sniff and split tools dynamically load libpcap at runtime."
+echo "      Install a libpcap shared library to use them:"
+echo "        Debian/Ubuntu/Kali: apt install libpcap0.8"
+echo "        RHEL/CentOS:        yum install libpcap"
+echo "        macOS:              brew install libpcap"
 
 if $build_only; then
+    echo ""
     echo "Binaries are in ${BUILD_DIR}/"
     exit 0
 fi
 
 # Install
 echo ""
-echo "Installing to ${INSTALL_DIR}/ as gopacket-<toolname>..."
+echo "Installing to ${INSTALL_DIR}/ as ${TOOL_PREFIX}-<toolname>..."
 
 # Check write permissions
 if [ ! -w "${INSTALL_DIR}" ]; then
@@ -199,15 +207,15 @@ for tool in "${tools[@]}"; do
     fi
     # Normalize tool name: lowercase, replace special chars with hyphens
     normalized=$(echo "$tool" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
-    dest="${INSTALL_DIR}/gopacket-${normalized}"
+    dest="${INSTALL_DIR}/${TOOL_PREFIX}-${normalized}"
     $SUDO cp "${BUILD_DIR}/${tool}" "$dest"
     $SUDO chmod +x "$dest"
 done
 
-echo -e "${GREEN}Installed ${built} tools to ${INSTALL_DIR}/${NC}"
+echo -e "${GREEN}Installed ${total} tools to ${INSTALL_DIR}/${NC}"
 echo ""
 echo "Tools are available as:"
-echo "  gopacket-secretsdump, gopacket-smbclient, gopacket-psexec, etc."
+echo "  ${TOOL_PREFIX}-secretsdump, ${TOOL_PREFIX}-smbclient, ${TOOL_PREFIX}-psexec, etc."
 echo ""
-echo "Run 'gopacket-<tool> -h' for help on any tool."
+echo "Run '${TOOL_PREFIX}-<tool> -h' for help on any tool."
 echo "To uninstall: $0 --uninstall"

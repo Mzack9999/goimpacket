@@ -22,15 +22,15 @@ import (
 	"os"
 	"strings"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/bkrp"
-	"gopacket/pkg/dcerpc/drsuapi"
-	"gopacket/pkg/dcerpc/lsarpc"
-	"gopacket/pkg/dpapi"
-	"gopacket/pkg/flags"
-	"gopacket/pkg/session"
-	"gopacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/bkrp"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/drsuapi"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/lsarpc"
+	"github.com/Mzack9999/goimpacket/pkg/dpapi"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/smb"
 )
 
 var (

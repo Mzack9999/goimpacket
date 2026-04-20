@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopacket/pkg/ntfs"
+	"github.com/Mzack9999/goimpacket/pkg/ntfs"
 )
 
 func main() {

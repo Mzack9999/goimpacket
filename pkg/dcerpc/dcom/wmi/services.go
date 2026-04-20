@@ -19,8 +19,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"gopacket/pkg/dcerpc/dcom"
-	"gopacket/pkg/utf16le"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/dcom"
+	"github.com/Mzack9999/goimpacket/pkg/utf16le"
 )
 
 // IWbemServices wraps the WMI services interface

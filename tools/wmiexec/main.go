@@ -55,10 +55,10 @@ import (
 	_ "github.com/oiweiwei/go-msrpc/msrpc/erref/win32"
 	_ "github.com/oiweiwei/go-msrpc/msrpc/erref/wmi"
 
-	"gopacket/pkg/flags"
-	"gopacket/pkg/kerberos"
-	"gopacket/pkg/session"
-	"gopacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/kerberos"
+	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/smb"
 )
 
 var (

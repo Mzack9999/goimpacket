@@ -20,8 +20,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 )
 
 // DCOM UUIDs

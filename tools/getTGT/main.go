@@ -20,9 +20,9 @@ import (
 	"log"
 	"os"
 
-	"gopacket/pkg/flags"
-	"gopacket/pkg/kerberos"
-	"gopacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
+	"github.com/Mzack9999/goimpacket/pkg/kerberos"
+	"github.com/Mzack9999/goimpacket/pkg/session"
 
 	"github.com/jcmturner/gokrb5/v8/iana/nametype"
 )

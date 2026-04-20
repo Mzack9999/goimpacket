@@ -21,10 +21,10 @@ import (
 	"log"
 	"strings"
 
-	"gopacket/internal/build"
-	"gopacket/pkg/dcerpc"
-	"gopacket/pkg/dcerpc/winreg"
-	"gopacket/pkg/registry"
+	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
+	"github.com/Mzack9999/goimpacket/pkg/dcerpc/winreg"
+	"github.com/Mzack9999/goimpacket/pkg/registry"
 )
 
 // SecretsdumpAttack dumps SAM hashes and LSA secrets via remote registry.
