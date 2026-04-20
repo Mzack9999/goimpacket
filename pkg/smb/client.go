@@ -47,11 +47,30 @@ type Client struct {
 }
 
 func NewClient(target session.Target, creds *session.Credentials) *Client {
+	return NewClientWithDialer(target, creds, nil)
+}
+
+// NewClientWithDialer is identical to NewClient but lets the caller install a
+// custom *transport.Dialer (e.g. one carrying a DialFn that routes the SMB
+// connection through a specific outbound dialer). A nil dialer falls back to
+// the default transport.Dialer{}.
+func NewClientWithDialer(target session.Target, creds *session.Credentials, dialer *transport.Dialer) *Client {
+	if dialer == nil {
+		dialer = &transport.Dialer{}
+	}
 	return &Client{
 		Target:      target,
 		Creds:       creds,
-		dialer:      &transport.Dialer{},
+		dialer:      dialer,
 		currentPath: "\\",
+	}
+}
+
+// SetDialer overrides the *transport.Dialer used for the next Connect().
+// It is a no-op when the client has already been connected.
+func (c *Client) SetDialer(d *transport.Dialer) {
+	if d != nil {
+		c.dialer = d
 	}
 }
 

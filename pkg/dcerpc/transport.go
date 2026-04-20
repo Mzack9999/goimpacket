@@ -148,15 +148,29 @@ func (t *TCPTransport) Close() error {
 
 // DialTCP connects to a remote host:port and returns a TCPTransport.
 func DialTCP(host string, port int) (*TCPTransport, error) {
+	return DialTCPWithDialer(host, port, nil)
+}
+
+// DialTCPWithDialer is identical to DialTCP but routes the connection through
+// the supplied *transport.Dialer (typically holding a per-execution DialFn).
+// A nil dialer falls back to the package-level transport.Dial.
+func DialTCPWithDialer(host string, port int, d *transport.Dialer) (*TCPTransport, error) {
 	addr := fmt.Sprintf("%s:%d", host, port)
 	if build.Debug {
 		log.Printf("[D] RPC: Dialing TCP %s", addr)
 	}
-	conn, err := transport.Dial("tcp", addr)
+	var (
+		conn net.Conn
+		err  error
+	)
+	if d != nil {
+		conn, err = d.Dial("tcp", addr)
+	} else {
+		conn, err = transport.Dial("tcp", addr)
+	}
 	if err != nil {
 		return nil, err
 	}
-	// Set read/write deadlines to prevent hanging
 	conn.SetDeadline(time.Now().Add(10 * time.Second))
 	return NewTCPTransport(conn), nil
 }

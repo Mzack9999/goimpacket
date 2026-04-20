@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"time"
 
@@ -45,6 +46,11 @@ type TGTRequest struct {
 	DCHost        string
 	Service       string // SPN for requesting service ticket via AS-REQ (optional)
 	PrincipalType int32  // Principal name type (default: KRB_NT_PRINCIPAL)
+
+	// Dialer optionally routes the KDC TCP connection through a specific
+	// *transport.Dialer (typically holding a DialFn that captures execution
+	// state). When nil the package-level transport.Dial is used.
+	Dialer *transport.Dialer
 }
 
 // TGTResult holds the result of a successful TGT request.
@@ -151,7 +157,7 @@ func GetTGT(req *TGTRequest) (*TGTResult, error) {
 		return nil, fmt.Errorf("failed to marshal AS-REQ: %v", err)
 	}
 
-	respBuf, err := sendKDCRequest(kdcHost, b)
+	respBuf, err := sendKDCRequest(kdcHost, b, req.Dialer)
 	if err != nil {
 		return nil, err
 	}
@@ -262,9 +268,18 @@ func buildPAEncTimestamp(key []byte, encType int32) (types.PAData, error) {
 }
 
 // sendKDCRequest sends a Kerberos message to the KDC and returns the response.
-func sendKDCRequest(kdcHost string, data []byte) ([]byte, error) {
+// When dialer is non-nil it is used to establish the TCP connection.
+func sendKDCRequest(kdcHost string, data []byte, dialer ...*transport.Dialer) ([]byte, error) {
 	addr := fmt.Sprintf("%s:88", kdcHost)
-	conn, err := transport.Dial("tcp", addr)
+	var (
+		conn net.Conn
+		err  error
+	)
+	if len(dialer) > 0 && dialer[0] != nil {
+		conn, err = dialer[0].Dial("tcp", addr)
+	} else {
+		conn, err = transport.Dial("tcp", addr)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to KDC %s: %v", addr, err)
 	}

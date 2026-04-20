@@ -16,6 +16,7 @@ package kerberos
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/Mzack9999/goimpacket/pkg/transport"
@@ -31,6 +32,13 @@ import (
 // Hashcat: $krb5asrep$23$user@REALM:checksum$data
 // John:    $krb5asrep$user@REALM:checksum$data
 func GetASREP(username, domain, kdcHost string, format ...string) (string, error) {
+	return GetASREPWithDialer(nil, username, domain, kdcHost, format...)
+}
+
+// GetASREPWithDialer is identical to GetASREP but routes the KDC TCP
+// connection through the supplied *transport.Dialer (typically holding a
+// per-execution DialFn). A nil dialer falls back to transport.Dial.
+func GetASREPWithDialer(dialer *transport.Dialer, username, domain, kdcHost string, format ...string) (string, error) {
 	outputFormat := "hashcat"
 	if len(format) > 0 && format[0] != "" {
 		outputFormat = format[0]
@@ -61,8 +69,13 @@ func GetASREP(username, domain, kdcHost string, format ...string) (string, error
 		return "", fmt.Errorf("failed to marshal AS-REQ: %v", err)
 	}
 
-	// Connect to KDC (Port 88)
-	conn, err := transport.Dial("tcp", fmt.Sprintf("%s:%d", kdcHost, 88))
+	addr := fmt.Sprintf("%s:%d", kdcHost, 88)
+	var conn net.Conn
+	if dialer != nil {
+		conn, err = dialer.Dial("tcp", addr)
+	} else {
+		conn, err = transport.Dial("tcp", addr)
+	}
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to KDC: %v", err)
 	}

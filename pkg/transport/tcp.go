@@ -63,22 +63,32 @@ func Dial(network, address string) (net.Conn, error) {
 	return DialTimeout(network, address, DefaultTimeout)
 }
 
-// DialTimeout connects with the given timeout in seconds.
-func DialTimeout(network, address string, timeoutSec int) (net.Conn, error) {
+// DialContext connects using the supplied context. The context's deadline
+// supersedes the default timeout. The package-level DialFunc registered with
+// SetDial is honored if installed; otherwise the standard net.Dialer is used.
+func DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	if _, _, err := splitHostPort(address); err != nil {
 		return nil, err
 	}
-	ctx := context.Background()
-	if timeoutSec > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
-		defer cancel()
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	if d := currentDial(); d != nil {
 		return d(ctx, network, address)
 	}
 	var dlr net.Dialer
 	return dlr.DialContext(ctx, network, address)
+}
+
+// DialTimeout connects with the given timeout in seconds.
+func DialTimeout(network, address string, timeoutSec int) (net.Conn, error) {
+	ctx := context.Background()
+	if timeoutSec > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
+		defer cancel()
+	}
+	return DialContext(ctx, network, address)
 }
 
 // DialTLS connects then wraps the connection in TLS.
@@ -100,9 +110,14 @@ func DialTLS(network, address string, config *tls.Config) (*tls.Conn, error) {
 	return tlsConn, nil
 }
 
-// Dialer provides a way to establish connections.
+// Dialer provides a way to establish connections. When DialFn is set it is
+// used for every Dial/DialContext on this Dialer instance, bypassing the
+// package-level SetDial override and the stdlib fallback. Embedders should
+// install a DialFn closure that captures any per-call state (e.g. an execution
+// id) needed to route the connection through their preferred transport.
 type Dialer struct {
 	TimeoutSec int
+	DialFn     DialFunc
 }
 
 // Dial establishes a TCP connection to the specified address.
@@ -111,7 +126,28 @@ func (d *Dialer) Dial(network, address string) (net.Conn, error) {
 	if timeout == 0 {
 		timeout = DefaultTimeout
 	}
-	return DialTimeout(network, address, timeout)
+	ctx := context.Background()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		defer cancel()
+	}
+	return d.DialContext(ctx, network, address)
+}
+
+// DialContext establishes a TCP connection honoring the context. Per-instance
+// DialFn takes precedence over the package-level SetDial hook.
+func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	if _, _, err := splitHostPort(address); err != nil {
+		return nil, err
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if d != nil && d.DialFn != nil {
+		return d.DialFn(ctx, network, address)
+	}
+	return DialContext(ctx, network, address)
 }
 
 func splitHostPort(address string) (host, port string, err error) {
