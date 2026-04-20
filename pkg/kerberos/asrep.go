@@ -69,7 +69,12 @@ func GetASREPWithDialer(dialer *transport.Dialer, username, domain, kdcHost stri
 		return "", fmt.Errorf("failed to marshal AS-REQ: %v", err)
 	}
 
-	addr := fmt.Sprintf("%s:%d", kdcHost, 88)
+	// Honor an explicit "host:port" form so callers (and tests) can target
+	// non-default KDC ports; fall back to 88 otherwise.
+	addr := kdcHost
+	if _, _, err := net.SplitHostPort(addr); err != nil {
+		addr = fmt.Sprintf("%s:%d", kdcHost, 88)
+	}
 	var conn net.Conn
 	if dialer != nil {
 		conn, err = dialer.Dial("tcp", addr)

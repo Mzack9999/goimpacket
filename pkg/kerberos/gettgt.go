@@ -270,7 +270,12 @@ func buildPAEncTimestamp(key []byte, encType int32) (types.PAData, error) {
 // sendKDCRequest sends a Kerberos message to the KDC and returns the response.
 // When dialer is non-nil it is used to establish the TCP connection.
 func sendKDCRequest(kdcHost string, data []byte, dialer ...*transport.Dialer) ([]byte, error) {
-	addr := fmt.Sprintf("%s:88", kdcHost)
+	// Honor an explicit "host:port" form so callers (and tests) can target
+	// non-default KDC ports; fall back to 88 otherwise.
+	addr := kdcHost
+	if _, _, err := net.SplitHostPort(addr); err != nil {
+		addr = fmt.Sprintf("%s:88", kdcHost)
+	}
 	var (
 		conn net.Conn
 		err  error
