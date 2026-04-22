@@ -65,7 +65,6 @@ type TicketConfig struct {
 	//   ""   => default: <username>.ccache in the current directory
 	//   "-"  => do not persist a ccache file (in-memory only)
 	//   path => write to the given path
-	// Patched by projectdiscovery/nuclei integration.
 	OutputFile string
 }
 

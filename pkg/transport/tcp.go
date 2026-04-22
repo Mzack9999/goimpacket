@@ -14,12 +14,10 @@
 
 // Package transport provides a small TCP/TLS dialer used across goimpacket.
 //
-// This file is patched for the projectdiscovery/nuclei integration:
-//   - Removes the CGO/libc-based dialer (was used to make proxychains-style
-//     LD_PRELOAD shims work). nuclei needs a pure-Go build with no CGO,
-//     and routes connections through its own fastdialer.
-//   - Adds a SetDial(DialFunc) hook so the embedding application can install
-//     a custom DialContext (e.g. fastdialer with proxy + network policy).
+// The default dialer is a pure-Go net.Dialer (no CGO). Embedders that need
+// to route connections through their own stack (custom resolver, proxy chain,
+// network policy) can install a DialFunc via SetDial - the override is
+// honored by all goimpacket subsystems that go through this package.
 package transport
 
 import (
