@@ -27,6 +27,7 @@ import (
 	"github.com/Mzack9999/goimpacket/internal/build"
 	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 	"github.com/Mzack9999/goimpacket/pkg/dcerpc/epmapper"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
@@ -89,8 +90,8 @@ type ifaceResult struct {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `gopacket v0.1.0-beta - Copyright 2026 Google LLC
-
+		fmt.Fprintln(os.Stderr, flags.Banner())
+		fmt.Fprintf(os.Stderr, `
 Scans for listening MSRPC interfaces. Tries the MGMT interface first,
 falls back to UUID bruteforce if MGMT is not available.
 
@@ -111,14 +112,16 @@ Examples:
 `, os.Args[0], os.Args[0], os.Args[0])
 	}
 
+	configureProxy := flags.RegisterProxyFlag()
 	flag.Parse()
+	configureProxy()
 
 	if flag.NArg() < 1 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 
 	if *debug {

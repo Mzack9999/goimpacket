@@ -275,7 +275,7 @@ var NDR_UUID = []byte{
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "gopacket v0.1.0-beta - Copyright 2026 Google LLC\n\n")
+		fmt.Fprintf(os.Stderr, "%s\n\n", flags.Banner())
 		fmt.Fprintf(os.Stderr, "For every file request received, this module will return the pathname\n")
 		fmt.Fprintf(os.Stderr, "contents based on extension matching.\n\n")
 		fmt.Fprintf(os.Stderr, "Usage: karmaSMB [options] pathname\n\n")

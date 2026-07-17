@@ -108,7 +108,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 
 	// Connect via SMB
@@ -809,7 +809,7 @@ func cmdMsg(smbClient *smb.Client, auth *authContext, sessionID int, title, mess
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Fprintln(os.Stderr, flags.Banner())
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Usage: tstool [auth-flags] target <action> [action-flags]")
 	fmt.Fprintln(os.Stderr)

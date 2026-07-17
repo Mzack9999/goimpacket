@@ -366,7 +366,7 @@ func (s *Server) GetShares() []*Share {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "gopacket v0.1.0-beta - Copyright 2026 Google LLC\n\n")
+		fmt.Fprintf(os.Stderr, "%s\n\n", flags.Banner())
 		fmt.Fprintf(os.Stderr, "usage: smbserver [-h] [-comment COMMENT] [-username USERNAME]\n")
 		fmt.Fprintf(os.Stderr, "                 [-password PASSWORD] [-hashes LMHASH:NTHASH] [-ts]\n")
 		fmt.Fprintf(os.Stderr, "                 [-debug] [-ip INTERFACE_ADDRESS] [-port PORT]\n")

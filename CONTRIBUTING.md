@@ -1,4 +1,4 @@
-# Contributing to goimpacket
+# Contributing to gopacket
 
 Contributions are welcome. This document covers what you need to know before
 opening an issue or pull request.
@@ -6,24 +6,24 @@ opening an issue or pull request.
 ## Reporting Bugs
 
 Before filing a bug report, please run the same operation with
-[Impacket](https://github.com/fortra/impacket) side by side. Because goimpacket
+[Impacket](https://github.com/fortra/impacket) side by side. Because gopacket
 implements the same wire protocols, many apparent bugs turn out to be
 **environmental** — patched DCs, LDAP signing, EPA, PKT_INTEGRITY, NTLM MIC
 validation, missing SPNs, time skew, DNS issues, and so on.
 
 - **If Impacket fails the same way**, the issue is almost certainly
   environmental. Check [KNOWN_ISSUES.md](KNOWN_ISSUES.md) before filing.
-- **If Impacket succeeds where goimpacket fails**, that's a real bug and
+- **If Impacket succeeds where gopacket fails**, that's a real bug and
   exactly what we want to hear about.
 
 ### What to include in a bug report
 
-1. Both outputs (goimpacket with `-debug` and Impacket), as **text** not
+1. Both outputs (gopacket with `-debug` and Impacket), as **text** not
    screenshots
 2. The exact command line you ran
 3. Target OS, AD functional level, and any relevant hardening (signing,
    EPA, channel binding, patch level)
-4. goimpacket version or commit hash
+4. gopacket version or commit hash
 
 ### Anonymize sensitive data
 
@@ -84,7 +84,7 @@ cases in protocol handling matter.
 
 ## Security Vulnerabilities
 
-If you find a security vulnerability **in goimpacket itself** (not a protocol
+If you find a security vulnerability **in gopacket itself** (not a protocol
 limitation), please report it responsibly. Do **not** open a public GitHub
 issue. Instead, use GitHub's private vulnerability reporting:
 
@@ -92,5 +92,5 @@ https://github.com/Mzack9999/goimpacket/security/advisories/new
 
 ## License
 
-By contributing to goimpacket, you agree that your contributions will be
+By contributing to gopacket, you agree that your contributions will be
 licensed under the [Apache License 2.0](LICENSE).

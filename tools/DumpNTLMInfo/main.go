@@ -76,7 +76,7 @@ const EPOCH_DIFF = 116444736000000000
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintln(os.Stderr, "gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+		fmt.Fprintln(os.Stderr, flags.Banner())
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Do NTLM authentication and parse information.")
 		fmt.Fprintln(os.Stderr)
@@ -88,9 +88,11 @@ func main() {
 
 	debug := flag.Bool("debug", false, "Turn DEBUG output ON")
 	ts := flag.Bool("ts", false, "Adds timestamp to every logging output")
+	configureProxy := flags.RegisterProxyFlag()
 
 	flags.CheckHelp()
 	flag.Parse()
+	configureProxy()
 
 	if flag.NArg() < 1 {
 		flag.Usage()

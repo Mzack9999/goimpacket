@@ -96,7 +96,7 @@ func (r *RemoteOps) GetBootKey() ([]byte, error) {
 	for _, keyName := range keyNames {
 		path := fmt.Sprintf("SYSTEM\\%s\\Control\\Lsa\\%s", controlSet, keyName)
 
-		keyHandle, err := BaseRegOpenKey(r.rpcClient, hklm, path, 1, KEY_READ)
+		keyHandle, err := BaseRegOpenKey(r.rpcClient, hklm, path, 1, MAXIMUM_ALLOWED)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open %s: %v", path, err)
 		}
@@ -127,7 +127,7 @@ func (r *RemoteOps) GetBootKey() ([]byte, error) {
 // getCurrentControlSet determines which ControlSet is currently in use
 func (r *RemoteOps) getCurrentControlSet() (string, error) {
 	// Open SYSTEM\Select key
-	selectKey, err := BaseRegOpenKey(r.rpcClient, r.hklm, "SYSTEM\\Select", 1, KEY_READ)
+	selectKey, err := BaseRegOpenKey(r.rpcClient, r.hklm, "SYSTEM\\Select", 1, MAXIMUM_ALLOWED)
 	if err != nil {
 		return "", err
 	}

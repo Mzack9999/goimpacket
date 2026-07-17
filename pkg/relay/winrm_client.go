@@ -15,6 +15,7 @@
 package relay
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -24,8 +25,10 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // WinRMRelayClient implements ProtocolClient for relaying NTLM auth to WinRM targets.
@@ -50,20 +53,22 @@ func NewWinRMRelayClient(addr string, useTLS bool) *WinRMRelayClient {
 // InitConnection creates the HTTP client with connection reuse for NTLM handshake.
 // Implements ProtocolClient.
 func (c *WinRMRelayClient) InitConnection() error {
-	transport := &http.Transport{
+	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 		DisableKeepAlives: false,
 		// Force single connection reuse for NTLM auth
 		MaxIdleConnsPerHost: 1,
-		DialContext: (&net.Dialer{
-			Timeout: 10 * 1e9, // 10 seconds
-		}).DialContext,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			return transport.DialContext(ctx, network, addr)
+		},
 	}
 
 	c.httpClient = &http.Client{
-		Transport: transport,
+		Transport: tr,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},

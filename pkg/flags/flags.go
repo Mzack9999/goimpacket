@@ -23,6 +23,7 @@ import (
 
 	"github.com/Mzack9999/goimpacket/internal/build"
 	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // ExtraUsageLine is appended to the "Usage: tool [options] target" line (e.g. "[maxRid]")
@@ -46,6 +47,7 @@ type Options struct {
 	TargetIP string
 	Port     int
 	IPv6     bool
+	Proxy    string
 
 	// Utility
 	InputFile  string
@@ -60,6 +62,29 @@ type Options struct {
 
 	// Arguments - remaining positional arguments after target (e.g., command for wmiexec)
 	Arguments []string
+}
+
+// ProxyFlagUsage is the shared usage string for -proxy. Keep tools consistent
+// so the flag behaves identically whether registered via Parse() or
+// RegisterProxyFlag().
+const ProxyFlagUsage = "SOCKS5 proxy URL (e.g. socks5h://127.0.0.1:1080). Routes TCP through the proxy. UDP features are disabled. If unset, ALL_PROXY env is consulted."
+
+// ConfigureProxy wires the transport layer with the given proxy URL. Exits on
+// error so a misconfigured -proxy fails the tool instead of silently bypassing
+// the proxy. Call after flag.Parse().
+func ConfigureProxy(proxyURL string) {
+	if err := transport.Configure(transport.Options{Proxy: proxyURL}); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+}
+
+// RegisterProxyFlag registers -proxy on the default flag.CommandLine and
+// returns a finalizer to call after flag.Parse(). Intended for tools that
+// hand-roll their flag setup instead of using Parse().
+func RegisterProxyFlag() func() {
+	proxyURL := flag.String("proxy", "", ProxyFlagUsage)
+	return func() { ConfigureProxy(*proxyURL) }
 }
 
 // CheckHelp scans os.Args for -h/--help anywhere and shows usage if found.
@@ -90,6 +115,7 @@ func Parse() *Options {
 	flag.StringVar(&opts.TargetIP, "target-ip", "", "IP Address of the target machine")
 	flag.IntVar(&opts.Port, "port", 445, "Destination port to connect to SMB Server")
 	flag.BoolVar(&opts.IPv6, "6", false, "Connect via IPv6")
+	flag.StringVar(&opts.Proxy, "proxy", "", ProxyFlagUsage)
 
 	flag.StringVar(&opts.InputFile, "inputfile", "", "input file with list of entries")
 	flag.StringVar(&opts.OutputFile, "outputfile", "", "base output filename")
@@ -120,6 +146,17 @@ func Parse() *Options {
 
 	flag.Parse()
 
+	// Set global settings and configure transport unconditionally, even when
+	// no positional args were given. Tools that take config entirely via
+	// flags (e.g. listeners) still need Debug/Timestamp/-proxy to take effect.
+	if opts.Debug {
+		build.Debug = true
+	}
+	if opts.Timestamp {
+		build.Timestamp = true
+	}
+	ConfigureProxy(opts.Proxy)
+
 	// Handle Positional Arguments (target + optional command/args)
 	if flag.NArg() == 0 {
 		return opts
@@ -129,19 +166,11 @@ func Parse() *Options {
 		opts.Arguments = flag.Args()[1:]
 	}
 
-	// Set Global Settings
-	if opts.Debug {
-		build.Debug = true
-	}
-	if opts.Timestamp {
-		build.Timestamp = true
-	}
-
 	return opts
 }
 
 // Version is the current gopacket release version.
-const Version = "v0.1.0-beta"
+const Version = "v0.1.1-beta"
 
 // Banner returns the standard gopacket banner string.
 func Banner() string {
@@ -154,7 +183,7 @@ func printBanner() {
 
 func printGroupedHelp() {
 	authFlags := []string{"hashes", "no-pass", "k", "aesKey", "keytab"}
-	connFlags := []string{"6", "dc-host", "dc-ip", "target-ip", "port"}
+	connFlags := []string{"6", "dc-host", "dc-ip", "target-ip", "port", "proxy"}
 	miscFlags := []string{"inputfile", "outputfile", "ts", "debug"}
 
 	// Maps to store flags

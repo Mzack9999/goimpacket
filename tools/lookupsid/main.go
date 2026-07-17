@@ -63,7 +63,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 	fmt.Printf("[*] Brute forcing SIDs at %s\n", target.Host)
 

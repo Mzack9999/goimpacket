@@ -15,6 +15,7 @@
 package relay
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
@@ -24,8 +25,10 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/Mzack9999/goimpacket/internal/build"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // HTTPRelayClient implements ProtocolClient for relaying NTLM auth to HTTP/HTTPS targets.
@@ -73,20 +76,22 @@ func (c *HTTPRelayClient) SetPath(path string) {
 func (c *HTTPRelayClient) InitConnection() error {
 	// Use a custom transport that keeps connections alive for the NTLM handshake.
 	// The entire 3-leg NTLM exchange must happen on the same TCP connection.
-	transport := &http.Transport{
+	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
 		DisableKeepAlives: false,
 		// Force single connection reuse for NTLM auth
 		MaxIdleConnsPerHost: 1,
-		DialContext: (&net.Dialer{
-			Timeout: 10 * 1e9, // 10 seconds
-		}).DialContext,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			return transport.DialContext(ctx, network, addr)
+		},
 	}
 
 	c.httpClient = &http.Client{
-		Transport: transport,
+		Transport: tr,
 		// Don't follow redirects — we need to see the raw 401/302 responses
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse

@@ -73,8 +73,8 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `gopacket v0.1.0-beta - Copyright 2026 Google LLC
-
+	fmt.Fprintln(os.Stderr, flags.Banner())
+	fmt.Fprintf(os.Stderr, `
 Performs the KERB-KEY-LIST-REQ attack to dump secrets from the remote machine
 without executing any agent there.
 

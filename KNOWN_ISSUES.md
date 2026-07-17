@@ -1,44 +1,30 @@
-# goimpacket ntlmrelayx — Known Issues
+# gopacket ntlmrelayx — Known Issues
 
 ## How to Report Issues
 
 When reporting, please include:
-- Exact command line used (both goimpacket and coercion command)
+- Exact command line used (both gopacket and coercion command)
 - Full output with `-debug` flag enabled
 - Target OS version and patch level if known
 - Whether the same operation works with Impacket's ntlmrelayx
 
 ---
 
-## 1. SMB Relay: Registry Access Denied (samdump / secretsdump)
+## 1. SMB Relay samdump / secretsdump: Relayed Principal Must Have Admin on Target
 
-**Symptom:** `BaseRegOpenKey(SYSTEM\Select) failed: 0x00000005` (ACCESS_DENIED) when running `samdump` or `secretsdump` via SMB relay.
+**Symptom:** `BaseRegOpenKey(SYSTEM\Select) failed: 0x00000005` (ACCESS_DENIED) after a relay appears to succeed.
 
-**Details:** The relay authenticates successfully, the winreg named pipe opens, and the HKLM root handle is obtained — but opening `SYSTEM\Select` (needed for boot key extraction) returns ACCESS_DENIED. This affects both `samdump` (new default) and `secretsdump`.
+**Root cause:** The relayed principal does not have local administrator rights on the target. Reading the SAM/SYSTEM/SECURITY hives requires admin access, so the attack fails at the first privileged registry open. Verified against GOAD with `WINTERFELL$` (DC machine account) relayed to srv02 (fails as described), then `eddard.stark` (Domain Admin) relayed to the same srv02 (dumps hashes successfully).
 
-**Root cause (suspected):** The relayed SMB session token may have a restricted impersonation level ("Identification" instead of "Impersonation") depending on the target's configuration, Windows patch level, or the relayed account's privileges. The winreg service may enforce stricter access checks on subkeys than on the root HKLM handle.
+**This is not a gopacket bug** — it is the same constraint Impacket's `ntlmrelayx -attack samdump` has. The access mask on the subkey open has been aligned with Impacket (`MAXIMUM_ALLOWED`) so we pick up the widest effective access the token allows, but a token with no admin rights still can't read the protected keys no matter what we request.
 
-**Workaround:** Use direct (non-relay) secretsdump with credentials obtained through other means (e.g., relay to LDAP for credential extraction, then use `secretsdump` directly).
+**Common pitfall:** PetitPotam, PrinterBug, and similar coercion tools force a HOST's machine account to authenticate. A domain controller's machine account does NOT have admin on member servers by default, so relaying a DC$ auth to a member server always produces this ACCESS_DENIED. Relay scenarios that succeed involve user-context auth from a principal who is actually a local or domain admin on the target (e.g., a scheduled task running as a Domain Admin, an interactive login reaching out over SMB, Responder-style LLMNR poisoning catching a user credential).
 
-**Not affected:** Standalone `secretsdump` with direct credentials works perfectly. Other SMB relay attacks (`shares`, `smbexec`) work fine over the same relay session.
-
-**Status:** Needs investigation. May be environment-specific. Compare with Impacket's ntlmrelayx default SMB attack on the same target.
+**Workaround:** ensure the relayed principal has admin rights on the target, or use `-attack shares` / `-attack smbexec` which don't require registry access.
 
 ---
 
-## 2. Standalone secretsdump: Panic in Cached Credentials Parser
-
-**Symptom:** `panic: runtime error: slice bounds out of range [5052:5048]` in `pkg/registry/hive.go:82` when parsing the SECURITY hive's cached domain logon entries.
-
-**Details:** SAM hashes and LSA secrets dump correctly, but parsing `NL$` cached credential entries causes an out-of-bounds slice access in the registry hive cell reader. Occurs after successfully dumping several cached entries.
-
-**Workaround:** SAM hashes and LSA secrets are dumped before the panic occurs, so those results are usable. The panic only affects cached domain logon credentials.
-
-**Status:** Bug in `pkg/registry/hive.go` `readCell()` — needs bounds checking fix.
-
----
-
-## 3. tschexec / enum-local-admins: RPC Access Denied
+## 2. tschexec / enum-local-admins: RPC Access Denied
 
 **Symptom:** `RPC Fault 0x05 (ACCESS_DENIED)` when running `tschexec` or `enumlocaladmins` via relay.
 
@@ -52,19 +38,7 @@ When reporting, please include:
 
 ---
 
-## 4. SMB Relay: Intermittent PIPE_NOT_AVAILABLE (0xc00000ac)
-
-**Symptom:** `create failed: status=0xc00000ac` when opening the `winreg` named pipe on the relay target.
-
-**Details:** The Remote Registry service may not be running or may be slow to respond to pipe connection requests. This is transient — retrying (via `--keep-relaying`) typically succeeds.
-
-**Workaround:** Ensure the Remote Registry service is running on the target before relaying. Or use `--keep-relaying` to automatically retry on the next coerced authentication.
-
-**Status:** Consider adding auto-retry or service start logic (Impacket starts RemoteRegistry automatically via SVCCTL before winreg operations).
-
----
-
-## 5. Shadow Credentials: Certificate Generation Not Implemented
+## 3. Shadow Credentials: Certificate Generation Not Implemented
 
 **Symptom:** `-attack shadowcreds` reads existing `msDS-KeyCredentialLink` values but cannot write new shadow credentials.
 
@@ -76,7 +50,7 @@ When reporting, please include:
 
 ---
 
-## 6. LDAP Relay: Plain LDAP (Port 389) Post-Auth Signing Failure
+## 4. LDAP Relay: Plain LDAP (Port 389) Post-Auth Signing Failure
 
 **Symptom:** LDAP relay to port 389 authenticates successfully but subsequent LDAP operations fail with signing errors on patched DCs.
 
@@ -88,7 +62,7 @@ When reporting, please include:
 
 ---
 
-## 7. SMB→LDAPS Relay Fails on Patched DCs
+## 5. SMB→LDAPS Relay Fails on Patched DCs
 
 **Symptom:** Relay from SMB capture to LDAPS target fails with MIC validation errors.
 
@@ -102,7 +76,48 @@ When reporting, please include:
 
 ---
 
-## 8. Remaining Gaps (Low Priority)
+## 6. UDP Features Disabled Under `-proxy`
+
+**Symptom:** Tools that depend on UDP fail with `UDP disabled under -proxy; the underlying feature cannot be tunneled` when `-proxy` (or `ALL_PROXY`) is set.
+
+**Details:** SOCKS5 UDP ASSOCIATE is rarely implemented correctly by proxy servers and client libraries. Silently bypassing the proxy for UDP when `-proxy` is configured would leak the operator's real source IP. gopacket therefore refuses UDP when proxied and surfaces a clear error through `transport.ErrUDPUnderProxy`.
+
+**Affected features:**
+
+| Feature | Tool(s) | Workaround |
+|---------|---------|------------|
+| SQL Server Browser discovery (UDP 1434) | `mssqlinstance` | Specify the port directly with `-port 1433` on `mssqlclient`; skip auto-discovery |
+| DNS SRV lookup routed through the DC | `CheckLDAPStatus` | Pass `-dc-host <hostname>` to skip discovery |
+| DNS hostname resolution via the DC | `GetADComputers` | Pass the target as an IP, or `-dc-ip <ip>` |
+| Forest-FQDN DNS fallback | `raiseChild` | Pass `-parent-dc <ip>` explicitly |
+| Local source-IP discovery | `smbexec` | Set `-target-ip <ip>` manually |
+
+**Status:** By design. UDP tunneling over SOCKS5 is not a gopacket goal. If your workflow genuinely needs UDP over a proxy, use `proxychains` (which hooks libc at a lower level and can intercept UDP sockets) or a full VPN instead of `-proxy`.
+
+### Kerberos KDC traffic under `-proxy`
+
+All Kerberos KDC traffic (AS-REQ/AS-REP, TGS-REQ/TGS-REP, kpasswd) is tunneled through `-proxy` alongside the rest of the tool. This is enforced two ways:
+
+1. The embedded gokrb5 library has been forked in-tree at `pkg/third_party/gokrb5`. Every client constructor (`NewWithPassword`, `NewWithKeytab`, `NewFromCCache`) takes a required `KDCDialer` as its first argument, making proxy-bypass a compile error rather than a runtime leak. Production call sites all pass `kerberos.TransportKDCDialer{}`, which delegates to `pkg/transport`.
+2. The synthesized krb5 config in `pkg/kerberos` sets `udp_preference_limit = 1` unconditionally, so KRB5 never even attempts UDP/88 — direct and proxied paths behave identically. Modern KRB5 already needs TCP for PAC-bearing TGS responses; the legacy UDP "optimization" is dropped.
+
+`/etc/krb5.conf` and `$KRB5_CONFIG` are intentionally not consulted; the in-memory config is the only one used. A misconfigured host cannot subvert the proxy/DNS guarantees by re-enabling `dns_lookup_kdc` or lowering `udp_preference_limit`.
+
+If you add a new code path that constructs a gokrb5 client, the type system will require a `KDCDialer`. Use `kerberos.TransportKDCDialer{}`; the alternative `client.DirectDialer{}` exists only as an explicit escape hatch.
+
+### DCERPC Kerberos traffic under `-proxy` (secretsdump DCSync, wmiexec, wmiquery, wmipersist, dcomexec)
+
+The DCERPC Kerberos auth path uses a separate Kerberos library (`oiweiwei/gokrb5.fork/v9` reached via `oiweiwei/go-msrpc/ssp/krb5`) because go-msrpc's RPC machinery embeds it. Three things are required to keep that path leak-free, and the codebase enforces all three at every call site:
+
+1. **KDC dialer on the krb5 config.** `pkg/dcerpc/auth_kerberos.go` and the four DCOM tools set `krbConfig.KDCDialer = kerberos.TransportKDCDialer{}` on every `krb5.Config` they construct. Same dialer, same proxy guarantee as the rest of Kerberos.
+2. **DCERPC transport dialer.** Every `dcerpc.Dial(...)` is passed `dcerpc.WithDialer(transport.ContextDialer{})` so the TCP step honors the proxy.
+3. **StringBinding form for the OXID-pivot dial.** The second `dcerpc.Dial` per tool uses `"ncacn_ip_tcp:" + target.Host`, not the bare hostname. The prefix forces go-msrpc to parse the address as a StringBinding instead of triggering its hard-coded pre-dial `net.LookupIP`, which would otherwise leak the target hostname to the operator's local resolver. The FQDN is then handed verbatim to the SOCKS5 dialer so resolution stays proxy-side.
+
+Operator-visible behavior under `-proxy`: every byte of AD attack traffic (Kerberos, SMB, DCERPC, kpasswd, DCSync DRSUAPI, DCOM activation, WMI) is sent through the configured SOCKS5 proxy. Tcpdump on the operator host shows no traffic to the AD subnet at all — only SOCKS5 frames to the proxy. Verified end-to-end in a GOAD lab with secretsdump DCSync extracting `krbtgt`, wmiexec returning `whoami` output, and getTGT/getST/GetUserSPNs/GetNPUsers exchanging with the KDC — all silent on the wire, while the same getTGT without `-proxy` immediately emits direct SYN packets to the KDC.
+
+---
+
+## 7. Remaining Gaps (Low Priority)
 
 These Impacket features are not yet implemented due to infrastructure requirements:
 

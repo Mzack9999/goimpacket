@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows
+
 package main
 
 import (
@@ -23,6 +25,7 @@ import (
 
 	"github.com/Mzack9999/gopacket"
 	"github.com/Mzack9999/gopacket/layers"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 )
 
 // Protocol name to number mapping
@@ -38,7 +41,7 @@ var protoMap = map[string]int{
 }
 
 func main() {
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 
 	// Default protocols if none specified

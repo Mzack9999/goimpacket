@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows && cgo
+
 package main
 
 import (
@@ -22,6 +24,7 @@ import (
 	"github.com/Mzack9999/gopacket/layers"
 	"github.com/Mzack9999/gopacket/pcap"
 	"github.com/Mzack9999/gopacket/pcapgo"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 )
 
 // Supported datalink types
@@ -59,7 +62,7 @@ type ConnectionWriter struct {
 }
 
 func main() {
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 	fmt.Println("[!] This tool is deprecated and may be removed in future versions.")
 	fmt.Println()

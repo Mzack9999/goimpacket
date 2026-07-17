@@ -1,6 +1,5 @@
 #!/bin/bash
 # Copyright 2026 Google LLC
-# Copyright 2026 Mzack9999
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,7 +22,6 @@ set -e
 # Default install directory
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 BUILD_DIR="./bin"
-TOOL_PREFIX="goimpacket"
 
 # Colors
 RED='\033[0;31m'
@@ -32,23 +30,55 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 usage() {
-    echo "Usage: $0 [OPTIONS]"
-    echo ""
-    echo "Options:"
-    echo "  --prefix DIR    Install to DIR (default: /usr/local/bin)"
-    echo "  --build-only    Build but don't install"
-    echo "  --uninstall     Remove installed goimpacket tools"
-    echo "  -h, --help      Show this help"
-    echo ""
-    echo "Environment:"
-    echo "  INSTALL_DIR     Same as --prefix (default: /usr/local/bin)"
+    cat <<'EOF'
+Usage: ./install.sh [OPTIONS]
+
+Build and install goimpacket tools. Run with no flags to get an interactive
+prompt explaining the build targets.
+
+Options:
+  --target NAME   Build target. One of:
+                    native    (default) Linux/macOS cgo, installs to
+                              /usr/local/bin. All 63 tools; proxychains
+                              and -proxy both work. Needs GCC (libpcap-dev
+                              not required; purego gopacket).
+                    portable  Host-OS binaries with CGO off. sniff/split
+                              still work via purego (runtime libpcap).
+                              Use -proxy (proxychains won't hook).
+                              Output: ./dist/portable/
+                    windows   Windows amd64 cross-compile. sniff/split/
+                              sniffer stubbed; -proxy only (no LD_PRELOAD
+                              on Windows). Output: ./dist/windows/
+                    all       Build every target.
+
+  --prefix DIR    For the native target, install to DIR instead of
+                  /usr/local/bin. Has no effect on cross-compile targets.
+  --build-only    Build but don't install (native target only).
+  --uninstall     Remove previously installed goimpacket-* binaries from
+                  $INSTALL_DIR. Affects native installs only.
+  -h, --help      Show this help.
+
+Environment:
+  INSTALL_DIR     Same as --prefix.
+
+Examples:
+  ./install.sh                          Interactive, prompts for target
+  ./install.sh --target native          Today's default (build + install)
+  ./install.sh --target windows         Cross-compile Windows .exe files
+  ./install.sh --target all             Build every target in one run
+EOF
 }
 
+target=""
 build_only=false
 uninstall=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --target)
+            target="$2"
+            shift 2
+            ;;
         --prefix)
             INSTALL_DIR="$2"
             shift 2
@@ -75,9 +105,9 @@ done
 
 # Uninstall mode
 if $uninstall; then
-    echo "Removing ${TOOL_PREFIX} tools from ${INSTALL_DIR}..."
+    echo "Removing gopacket tools from ${INSTALL_DIR}..."
     count=0
-    for f in "${INSTALL_DIR}"/${TOOL_PREFIX}-*; do
+    for f in "${INSTALL_DIR}"/goimpacket-*; do
         if [ -f "$f" ]; then
             echo "  removing $(basename "$f")"
             rm -f "$f"
@@ -85,27 +115,11 @@ if $uninstall; then
         fi
     done
     if [ $count -eq 0 ]; then
-        echo "No ${TOOL_PREFIX} tools found in ${INSTALL_DIR}"
+        echo "No gopacket tools found in ${INSTALL_DIR}"
     else
         echo -e "${GREEN}Removed ${count} tools${NC}"
     fi
     exit 0
-fi
-
-# Check dependencies
-if ! command -v go &>/dev/null; then
-    echo -e "${RED}Error: go is not installed or not in PATH${NC}"
-    echo "Install Go from https://go.dev/dl/"
-    exit 1
-fi
-
-# GCC is required for the proxychains hooks in pkg/transport (cgo).
-# libpcap headers are NOT required: the cgo-free github.com/Mzack9999/gopacket
-# fork loads libpcap dynamically at runtime via purego.
-if ! command -v gcc &>/dev/null; then
-    echo -e "${RED}Error: gcc is not installed${NC}"
-    echo "Install with: apt install build-essential (Debian/Ubuntu) or yum install gcc (RHEL/CentOS)"
-    exit 1
 fi
 
 # Determine script directory (where go.mod lives)
@@ -113,109 +127,233 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 if [ ! -f go.mod ]; then
-    echo -e "${RED}Error: go.mod not found. Run this script from the goimpacket directory.${NC}"
+    echo -e "${RED}Error: go.mod not found. Run this script from the gopacket directory.${NC}"
     exit 1
 fi
 
-# Discover tools
-tools=($(ls tools/))
-total=${#tools[@]}
+# Interactive prompt if no --target given and stdin is a terminal.
+if [ -z "$target" ]; then
+    if [ -t 0 ]; then
+        cat <<'EOF'
+goimpacket installer
 
-echo "goimpacket installer"
-echo "  Tools:   ${total}"
-echo "  Build:   ${BUILD_DIR}/"
-if ! $build_only; then
-    echo "  Install: ${INSTALL_DIR}/"
+Pick a build target. If unsure, pick (1).
+
+  (1) native
+      Linux/macOS cgo, installs to /usr/local/bin. All 63 tools; supports
+      both proxychains (LD_PRELOAD) and the -proxy SOCKS5 flag.
+      Needs GCC (proxychains hooks). libpcap-dev is NOT required:
+      sniff/split use the purego gopacket fork and load libpcap at runtime.
+
+  (2) portable
+      Static single-file binaries for your host OS, no system libs needed
+      for most tools. sniff/split still need a runtime libpcap shared
+      library if you use them. proxychains can't hook a cgo-off Go binary,
+      so use -proxy instead. Output: ./dist/portable/
+
+  (3) windows
+      Windows amd64 .exe cross-compile. sniff/split/sniffer are stubs.
+      No LD_PRELOAD on Windows, so -proxy is the only proxy path.
+      Output: ./dist/windows/
+
+  (4) all
+      Build every target.
+
+EOF
+        read -r -p "Choice [1-4, default 1]: " choice
+        choice="${choice:-1}"
+        case "$choice" in
+            1) target="native" ;;
+            2) target="portable" ;;
+            3) target="windows" ;;
+            4) target="all" ;;
+            *) echo -e "${RED}Invalid choice: $choice${NC}"; exit 1 ;;
+        esac
+        echo ""
+    else
+        # Non-TTY (piped, CI). Default to native without prompting.
+        target="native"
+    fi
 fi
-echo ""
 
-# Linker flags differ between platforms:
-#  - Linux (GNU ld): statically link libgcc so the binary doesn't depend on a
-#    specific libgcc.so on the target system.
-#  - macOS (clang/ld64): doesn't support -static-libgcc; use the default
-#    external linker with no extra flags.
-case "$(uname -s)" in
-    Linux)
-        LDFLAGS='-linkmode external -extldflags "-static-libgcc"'
-        ;;
-    Darwin)
-        LDFLAGS=''
-        ;;
+# Validate target
+case "$target" in
+    native|portable|windows|all) ;;
     *)
-        LDFLAGS=''
+        echo -e "${RED}Error: unknown target '$target'${NC}"
+        echo "Valid targets: native, portable, windows, all"
+        exit 1
         ;;
 esac
 
-# Build
-echo "Building ${total} tools..."
-mkdir -p "${BUILD_DIR}"
-
-failed=0
-for tool in "${tools[@]}"; do
-    echo -n "  ${tool}... "
-    if [ -n "$LDFLAGS" ]; then
-        err=$(CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
-            -ldflags "$LDFLAGS" \
-            "./tools/${tool}" 2>&1)
-    else
-        err=$(CGO_ENABLED=1 go build -o "${BUILD_DIR}/${tool}" \
-            "./tools/${tool}" 2>&1)
-    fi
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}ok${NC}"
-    else
-        echo -e "${RED}failed${NC}"
-        echo "$err" | sed 's/^/      /'
-        failed=$((failed + 1))
-    fi
-done
-
-if [ $failed -gt 0 ]; then
-    echo -e "\n${RED}${failed} tool(s) failed to build${NC}"
+# Check the Go toolchain is present (all targets need this).
+if ! command -v go &>/dev/null; then
+    echo -e "${RED}Error: go is not installed or not in PATH${NC}"
+    echo "Install Go from https://go.dev/dl/"
     exit 1
 fi
 
-echo -e "\n${GREEN}Built ${total}/${total} tools successfully${NC}"
-echo -e "${YELLOW}Note:${NC} the sniff and split tools dynamically load libpcap at runtime."
-echo "      Install a libpcap shared library to use them:"
-echo "        Debian/Ubuntu/Kali: apt install libpcap0.8"
-echo "        RHEL/CentOS:        yum install libpcap"
-echo "        macOS:              brew install libpcap"
+# build_target runs the build for one of: native, portable, windows.
+# Sets the right GOOS/CGO_ENABLED, picks an output directory, and iterates
+# over every tool in tools/. Stubs defined in the tools handle the cases
+# where a tool cannot be built for the target.
+build_target() {
+    local t="$1"
+    local goos goarch cgo outdir exe_suffix pcap_check label
+    case "$t" in
+        native)
+            goos=""
+            goarch=""
+            cgo=1
+            outdir="$BUILD_DIR"
+            exe_suffix=""
+            pcap_check=true
+            label="native (host OS, cgo on)"
+            ;;
+        portable)
+            goos=""   # inherit host OS
+            goarch="" # inherit host arch
+            cgo=0
+            outdir="./dist/portable"
+            exe_suffix=""
+            pcap_check=false
+            label="portable (host OS, cgo off, sniff/split stubbed)"
+            ;;
+        windows)
+            goos="windows"
+            goarch="amd64"
+            cgo=0
+            outdir="./dist/windows"
+            exe_suffix=".exe"
+            pcap_check=false
+            label="windows (GOOS=windows amd64, sniff/split/sniffer stubbed)"
+            ;;
+    esac
 
-if $build_only; then
     echo ""
-    echo "Binaries are in ${BUILD_DIR}/"
+    echo -e "${GREEN}=== Building ${label} ===${NC}"
+
+    # Native target needs GCC for cgo (proxychains libc hooks). libpcap-dev
+    # is not required: sniff/split use the purego gopacket fork.
+    if [ "$t" = "native" ]; then
+        if ! command -v gcc &>/dev/null; then
+            echo -e "${RED}Error: gcc is required for the native target (cgo)${NC}"
+            echo "Install with: apt install build-essential (Debian/Ubuntu) or yum install gcc (RHEL/CentOS)"
+            return 1
+        fi
+    fi
+
+
+    local tools
+    tools=($(ls tools/))
+    local total=${#tools[@]}
+
+    mkdir -p "$outdir"
+
+    local failed=0 skipped=0
+    for tool in "${tools[@]}"; do
+        echo -n "  ${tool}... "
+        # Cross-compile outputs get the same goimpacket- prefix as the native
+        # install, so users copying a .exe to a Windows host don't end up with
+        # ping.exe / net.exe / reg.exe shadowing built-ins of the same name.
+        # Native stays as the raw name here; install_native prefixes when it
+        # copies to INSTALL_DIR.
+        local out_name
+        if [ "$t" = "native" ]; then
+            out_name="$tool"
+        else
+            local normalized
+            normalized=$(echo "$tool" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+            out_name="goimpacket-${normalized}"
+        fi
+        local out_path="${outdir}/${out_name}${exe_suffix}"
+        local build_cmd=(go build -o "$out_path")
+        if [ "$t" = "native" ]; then
+            # Static-link libgcc so binaries run on minimally-versioned hosts.
+            build_cmd+=(-ldflags '-linkmode external -extldflags "-static-libgcc"')
+        fi
+        build_cmd+=("./tools/${tool}")
+        if err=$(GOOS="$goos" GOARCH="$goarch" CGO_ENABLED="$cgo" "${build_cmd[@]}" 2>&1); then
+            echo -e "${GREEN}ok${NC}"
+        else
+            echo -e "${RED}failed${NC}"
+            echo "$err" | sed 's/^/      /'
+            failed=$((failed + 1))
+        fi
+    done
+
+    if [ $failed -gt 0 ]; then
+        echo -e "\n${RED}${failed} tool(s) failed to build for ${t}${NC}"
+        return 1
+    fi
+
+    local built=$((total - skipped))
+    echo -e "\n${GREEN}Built ${built}/${total} tools for ${t} in ${outdir}/${NC}"
+    return 0
+}
+
+# Install is only meaningful for the native target. Cross-compile outputs
+# live in ./dist/ for the user to copy to the right host.
+install_native() {
+    echo ""
+    echo "Installing to ${INSTALL_DIR}/ as goimpacket-<toolname>..."
+
+    local SUDO=""
+    if [ ! -w "${INSTALL_DIR}" ]; then
+        echo -e "${YELLOW}Note: ${INSTALL_DIR} requires elevated permissions${NC}"
+        echo "Re-running install step with sudo..."
+        SUDO="sudo"
+    fi
+
+    local tools
+    tools=($(ls tools/))
+    local installed=0
+    for tool in "${tools[@]}"; do
+        if [ ! -f "${BUILD_DIR}/${tool}" ]; then
+            continue
+        fi
+        local normalized
+        normalized=$(echo "$tool" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+        local dest="${INSTALL_DIR}/goimpacket-${normalized}"
+        $SUDO cp "${BUILD_DIR}/${tool}" "$dest"
+        $SUDO chmod +x "$dest"
+        installed=$((installed + 1))
+    done
+
+    echo -e "${GREEN}Installed ${installed} tools to ${INSTALL_DIR}/${NC}"
+    echo ""
+    echo "Tools are available as:"
+    echo "  goimpacket-secretsdump, goimpacket-smbclient, goimpacket-psexec, etc."
+    echo ""
+    echo "Run 'goimpacket-<tool> -h' for help on any tool."
+    echo "To uninstall: $0 --uninstall"
+}
+
+# Run the requested target(s).
+if [ "$target" = "all" ]; then
+    build_target native || exit 1
+    build_target portable || exit 1
+    build_target windows || exit 1
+    if ! $build_only; then
+        install_native
+    fi
+    echo ""
+    echo -e "${GREEN}All targets built.${NC}"
+    echo "  native   -> ${BUILD_DIR}/"
+    echo "  portable -> ./dist/portable/"
+    echo "  windows  -> ./dist/windows/"
     exit 0
 fi
 
-# Install
-echo ""
-echo "Installing to ${INSTALL_DIR}/ as ${TOOL_PREFIX}-<toolname>..."
+build_target "$target" || exit 1
 
-# Check write permissions
-if [ ! -w "${INSTALL_DIR}" ]; then
-    echo -e "${YELLOW}Note: ${INSTALL_DIR} requires elevated permissions${NC}"
-    echo "Re-running install step with sudo..."
-    SUDO="sudo"
+if [ "$target" = "native" ] && ! $build_only; then
+    install_native
+elif [ "$target" = "native" ] && $build_only; then
+    echo ""
+    echo "Binaries are in ${BUILD_DIR}/"
 else
-    SUDO=""
+    echo ""
+    echo "Binaries are in $([ "$target" = "portable" ] && echo ./dist/portable/ || echo ./dist/windows/)"
+    echo "Copy them to the target host and run."
 fi
-
-for tool in "${tools[@]}"; do
-    if [ ! -f "${BUILD_DIR}/${tool}" ]; then
-        continue
-    fi
-    # Normalize tool name: lowercase, replace special chars with hyphens
-    normalized=$(echo "$tool" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
-    dest="${INSTALL_DIR}/${TOOL_PREFIX}-${normalized}"
-    $SUDO cp "${BUILD_DIR}/${tool}" "$dest"
-    $SUDO chmod +x "$dest"
-done
-
-echo -e "${GREEN}Installed ${total} tools to ${INSTALL_DIR}/${NC}"
-echo ""
-echo "Tools are available as:"
-echo "  ${TOOL_PREFIX}-secretsdump, ${TOOL_PREFIX}-smbclient, ${TOOL_PREFIX}-psexec, etc."
-echo ""
-echo "Run '${TOOL_PREFIX}-<tool> -h' for help on any tool."
-echo "To uninstall: $0 --uninstall"

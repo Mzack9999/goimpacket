@@ -20,6 +20,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 	"github.com/Mzack9999/goimpacket/pkg/tds"
 )
 
@@ -29,8 +30,8 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `gopacket v0.1.0-beta - Copyright 2026 Google LLC
-
+		fmt.Fprintln(os.Stderr, flags.Banner())
+		fmt.Fprintf(os.Stderr, `
 SQL Server Browser Protocol discovery tool.
 
 Queries the SQL Server Browser service (UDP 1434) to enumerate SQL Server
@@ -58,14 +59,16 @@ Note: Requires the SQL Server Browser service to be running on the target.
 `, os.Args[0], os.Args[0])
 	}
 
+	configureProxy := flags.RegisterProxyFlag()
 	flag.Parse()
+	configureProxy()
 
 	if flag.NArg() < 1 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 
 	target := flag.Arg(0)

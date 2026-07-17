@@ -349,6 +349,19 @@ func shell(client *smb.Client, hostname string, inputFile string) {
 				fmt.Printf("[+] %s\n", inf)
 			}
 			p.Close()
+		case "list_snapshots":
+			snaps, err := client.EnumerateSnapshots()
+			if err != nil {
+				fmt.Printf("[-] Error: %v\n", err)
+				continue
+			}
+			if len(snaps) == 0 {
+				fmt.Println("No snapshots available on this share.")
+				continue
+			}
+			for _, s := range snaps {
+				fmt.Println(s)
+			}
 		case "help":
 			fmt.Print(`
  logoff - logs off
@@ -368,6 +381,7 @@ func shell(client *smb.Client, hostname string, inputFile string) {
  mget {mask} - downloads all files from the current directory matching the provided mask
  cat {filename} - reads the filename from the current path
  info - returns NetrServerInfo main results
+ list_snapshots - lists VSS shadow copies available on the current share
  close - closes the current SMB Session
  exit - terminates the session
 `)

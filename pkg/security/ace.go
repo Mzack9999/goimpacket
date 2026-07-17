@@ -48,6 +48,9 @@ func ParseACE(data []byte) (*ACE, int, error) {
 		Flags: data[1],
 	}
 	aceSize := int(binary.LittleEndian.Uint16(data[2:4]))
+	if aceSize < 8 {
+		return nil, 0, fmt.Errorf("ACE size %d is below minimum header size of 8", aceSize)
+	}
 	if len(data) < aceSize {
 		return nil, 0, fmt.Errorf("ACE size %d exceeds available data %d", aceSize, len(data))
 	}

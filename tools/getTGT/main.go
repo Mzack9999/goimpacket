@@ -24,7 +24,7 @@ import (
 	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 	"github.com/Mzack9999/goimpacket/pkg/session"
 
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/iana/nametype"
 )
 
 var (

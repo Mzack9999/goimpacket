@@ -171,6 +171,7 @@ func DialTCPWithDialer(host string, port int, d *transport.Dialer) (*TCPTranspor
 	if err != nil {
 		return nil, err
 	}
+	// Set read/write deadlines to prevent hanging
 	conn.SetDeadline(time.Now().Add(10 * time.Second))
 	return NewTCPTransport(conn), nil
 }

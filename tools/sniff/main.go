@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows && cgo
+
 package main
 
 import (
@@ -26,6 +28,7 @@ import (
 	"github.com/Mzack9999/gopacket"
 	"github.com/Mzack9999/gopacket/layers"
 	"github.com/Mzack9999/gopacket/pcap"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 )
 
 // Supported datalink types
@@ -41,8 +44,8 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `gopacket v0.1.0-beta - Copyright 2026 Google LLC
-
+		fmt.Fprintln(os.Stderr, flags.Banner())
+		fmt.Fprintf(os.Stderr, `
 Simple packet sniffer using pcap.
 
 Usage: %s [options] [BPF filter]
@@ -63,7 +66,7 @@ Note: Requires root/CAP_NET_RAW privileges.
 
 	flag.Parse()
 
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 
 	// List interfaces mode

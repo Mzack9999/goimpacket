@@ -27,11 +27,11 @@ import (
 	"github.com/Mzack9999/goimpacket/pkg/transport"
 	"unicode/utf16"
 
-	"github.com/jcmturner/gokrb5/v8/config"
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/iana/nametype"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/config"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/crypto"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/iana/nametype"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/messages"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/types"
 	"golang.org/x/crypto/md4"
 )
 
@@ -117,9 +117,13 @@ func GetTGT(req *TGTRequest) (*TGTResult, error) {
 		return nil, fmt.Errorf("no authentication method specified (need password, hash, or aesKey)")
 	}
 
-	// Build AS-REQ
+	// Build AS-REQ. Defense-in-depth: networking below uses transport.Dial
+	// directly (gokrb5's sendToKDC is never invoked), so the opsec keys are
+	// no-ops on this path. Stamping them now means a future refactor that
+	// introduces a gokrb5 client.Client inherits the proxy/DNS guarantees.
 	cfg := config.New()
 	cfg.LibDefaults.DefaultRealm = realm
+	ApplyKrb5OpsecDefaults(cfg)
 	cfg.LibDefaults.DefaultTktEnctypes = []string{etypeName(encType)}
 	cfg.LibDefaults.DefaultTktEnctypeIDs = []int32{encType}
 	cfg.LibDefaults.Forwardable = true
@@ -268,14 +272,9 @@ func buildPAEncTimestamp(key []byte, encType int32) (types.PAData, error) {
 }
 
 // sendKDCRequest sends a Kerberos message to the KDC and returns the response.
-// When dialer is non-nil it is used to establish the TCP connection.
+// An optional *transport.Dialer routes the TCP connection; nil uses transport.Dial.
 func sendKDCRequest(kdcHost string, data []byte, dialer ...*transport.Dialer) ([]byte, error) {
-	// Honor an explicit "host:port" form so callers (and tests) can target
-	// non-default KDC ports; fall back to 88 otherwise.
-	addr := kdcHost
-	if _, _, err := net.SplitHostPort(addr); err != nil {
-		addr = fmt.Sprintf("%s:88", kdcHost)
-	}
+	addr := FormatKDC(kdcHost, "88")
 	var (
 		conn net.Conn
 		err  error

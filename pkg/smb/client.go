@@ -15,6 +15,7 @@
 package smb
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -31,6 +32,7 @@ import (
 	"github.com/Mzack9999/goimpacket/pkg/session"
 	"github.com/Mzack9999/goimpacket/pkg/third_party/smb2"
 	"github.com/Mzack9999/goimpacket/pkg/transport"
+	"github.com/Mzack9999/goimpacket/pkg/utf16le"
 )
 
 type Client struct {
@@ -67,7 +69,7 @@ func NewClientWithDialer(target session.Target, creds *session.Credentials, dial
 }
 
 // SetDialer overrides the *transport.Dialer used for the next Connect().
-// It is a no-op when the client has already been connected.
+// It is a no-op when d is nil.
 func (c *Client) SetDialer(d *transport.Dialer) {
 	if d != nil {
 		c.dialer = d
@@ -150,8 +152,6 @@ func (c *Client) Connect() error {
 		Initiator: initiator,
 
 		Negotiator: smb2.Negotiator{
-
-			SpecifiedDialect:      0x0210,
 			RequireMessageSigning: true,
 		},
 	}
@@ -426,4 +426,77 @@ func (c *Client) Mget(pattern string) error {
 		}
 	}
 	return nil
+}
+
+// fsctlSrvEnumerateSnapshots is FSCTL_SRV_ENUMERATE_SNAPSHOTS per MS-FSCC
+// 2.3.23 / MS-SMB2 2.2.31. Enumerates VSS shadow copies on the share.
+const fsctlSrvEnumerateSnapshots = 0x00144064
+
+// EnumerateSnapshots returns the VSS shadow-copy tokens available on the
+// currently selected share, formatted as `@GMT-YYYY.MM.DD-HH.MM.SS`. Requires
+// a share to be selected via UseShare. Returns an empty slice if no snapshots
+// exist. Implements the two-call size-probe pattern from MS-SMB2 2.2.32.
+func (c *Client) EnumerateSnapshots() ([]string, error) {
+	if c.currentShare == nil {
+		return nil, fmt.Errorf("no share selected")
+	}
+
+	f, err := c.currentShare.Open(".")
+	if err != nil {
+		return nil, fmt.Errorf("open share root: %v", err)
+	}
+	defer f.Close()
+
+	// First call with just enough buffer for the 12-byte SRV_SNAPSHOT_ARRAY
+	// header. The server returns SnapShotArraySize so we know how large the
+	// second call's buffer needs to be.
+	hdr, err := f.Ioctl(fsctlSrvEnumerateSnapshots, nil, 16)
+	if err != nil {
+		return nil, fmt.Errorf("ioctl (probe): %v", err)
+	}
+	if len(hdr) < 12 {
+		return nil, fmt.Errorf("snapshot probe response too short: %d bytes", len(hdr))
+	}
+	arraySize := binary.LittleEndian.Uint32(hdr[8:12])
+	if arraySize == 0 {
+		return []string{}, nil
+	}
+
+	// Second call, request header + full payload.
+	resp, err := f.Ioctl(fsctlSrvEnumerateSnapshots, nil, 12+int(arraySize))
+	if err != nil {
+		return nil, fmt.Errorf("ioctl (full): %v", err)
+	}
+	if len(resp) < 12 {
+		return nil, fmt.Errorf("snapshot response too short: %d bytes", len(resp))
+	}
+	numReturned := binary.LittleEndian.Uint32(resp[4:8])
+	arraySize = binary.LittleEndian.Uint32(resp[8:12])
+	if uint32(len(resp)) < 12+arraySize {
+		return nil, fmt.Errorf("snapshot payload truncated: got %d, want %d", len(resp), 12+arraySize)
+	}
+	data := resp[12 : 12+arraySize]
+
+	// The payload is a sequence of UTF-16LE NUL-terminated strings followed by
+	// a final UTF-16LE NUL terminator. Walk two bytes at a time looking for
+	// UTF-16 NULs.
+	var out []string
+	for i := 0; i+1 < len(data); {
+		end := i
+		for end+1 < len(data) {
+			if data[end] == 0 && data[end+1] == 0 {
+				break
+			}
+			end += 2
+		}
+		if end == i {
+			break // list terminator
+		}
+		out = append(out, utf16le.DecodeToString(data[i:end]))
+		i = end + 2
+		if uint32(len(out)) >= numReturned {
+			break
+		}
+	}
+	return out, nil
 }

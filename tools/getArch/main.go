@@ -25,6 +25,7 @@ import (
 	"github.com/Mzack9999/goimpacket/pkg/dcerpc"
 	"github.com/Mzack9999/goimpacket/pkg/dcerpc/epmapper"
 	"github.com/Mzack9999/goimpacket/pkg/dcerpc/header"
+	"github.com/Mzack9999/goimpacket/pkg/flags"
 	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
@@ -123,7 +124,7 @@ func checkArch(machine string, timeoutSec int) {
 }
 
 func printUsage() {
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 	fmt.Println("Gets the target system's OS architecture version")
 	fmt.Println()

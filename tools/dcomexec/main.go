@@ -56,6 +56,7 @@ import (
 	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 	"github.com/Mzack9999/goimpacket/pkg/session"
 	"github.com/Mzack9999/goimpacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // IDispatch invoke flags
@@ -159,6 +160,8 @@ func main() {
 	// Security options for dcerpc
 	var securityOpts []dcerpc.Option
 	securityOpts = append(securityOpts, dcerpc.WithSign())
+	// See wmiexec for rationale: tunnel DCERPC dials (and DNS) via pkg/transport.
+	securityOpts = append(securityOpts, dcerpc.WithDialer(transport.ContextDialer{}))
 
 	if creds.UseKerberos {
 		ccachePath := os.Getenv("KRB5CCNAME")
@@ -189,17 +192,8 @@ func main() {
 		if kdc == "" {
 			kdc = target.Host
 		}
-		confStr := fmt.Sprintf(`[libdefaults]
-    default_realm = %s
-    dns_lookup_realm = false
-    dns_lookup_kdc = false
-[realms]
-    %s = {
-        kdc = %s
-    }
-`, realm, realm, kdc)
-
-		krb5Conf, err := gokrb5config.NewFromString(confStr)
+		// Synthesizer stamps udp_preference_limit=1 + dns_lookup_*=false.
+		krb5Conf, err := gokrb5config.NewFromString(kerberos.SynthesizeKrb5Config(realm, kdc))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[-] Failed to create Kerberos config: %v\n", err)
 			os.Exit(1)
@@ -208,6 +202,8 @@ func main() {
 		krbConfig := krb5.NewConfig()
 		krbConfig.KRB5Config = krb5.ParsedLibDefaults(krb5Conf)
 		krbConfig.DCEStyle = true
+		// See wmiexec for rationale: tunnel KDC traffic via pkg/transport.
+		krbConfig.KDCDialer = kerberos.TransportKDCDialer{}
 
 		gssapi.AddMechanism(ssp.SPNEGO)
 		gssapi.AddMechanism(ssp.KRB5)
@@ -331,7 +327,7 @@ func (e *DCOMExec) connect() error {
 	}
 
 	// Connect to endpoint mapper (port 135)
-	conn, err := dcerpc.Dial(e.ctx, net.JoinHostPort(host, "135"))
+	conn, err := dcerpc.Dial(e.ctx, net.JoinHostPort(host, "135"), dcerpc.WithDialer(transport.ContextDialer{}))
 	if err != nil {
 		return fmt.Errorf("failed to connect to endpoint mapper: %v", err)
 	}
@@ -400,7 +396,8 @@ func (e *DCOMExec) connect() error {
 	}
 
 	// Connect to the OXID endpoint
-	oxidConn, err := dcerpc.Dial(e.ctx, host, endpoints...)
+	// See wmiexec for rationale on the ncacn_ip_tcp prefix.
+	oxidConn, err := dcerpc.Dial(e.ctx, "ncacn_ip_tcp:"+host, append(endpoints, dcerpc.WithDialer(transport.ContextDialer{}))...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to OXID endpoint: %v", err)
 	}
@@ -980,18 +977,19 @@ func (e *DCOMExec) getOutput() string {
 
 		content, err := e.smbClient.Cat(outputPath)
 		if err == nil {
-			e.smbClient.Rm(outputPath)
+			// Cat succeeds even while the remote process is still writing;
+			// Rm is what fails with a sharing violation in that case.
+			if rmErr := e.smbClient.Rm(outputPath); rmErr != nil && smb.IsSharingViolation(rmErr) {
+				waited = 0
+				continue
+			}
 			return e.decodeOutput(content)
 		}
 
 		errStr := err.Error()
 
-		if strings.Contains(errStr, "STATUS_SHARING_VIOLATION") {
-			waited = 0
-			continue
-		}
-
-		// Connection broken — reconnect and retry (matches Impacket)
+		// Connection broken — reconnect and retry (matches Impacket).
+		// These come from net, not smb2, so substring matching is the right tool.
 		if strings.Contains(errStr, "broken") || strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "use of closed") {
 			e.log.Debug().Msg("Connection broken, trying to recreate it")
 			e.smbClient.Close()
@@ -1003,10 +1001,8 @@ func (e *DCOMExec) getOutput() string {
 			return e.getOutput()
 		}
 
-		// File not found yet — keep waiting up to timeout
-		if strings.Contains(errStr, "STATUS_OBJECT_NAME_NOT_FOUND") ||
-			strings.Contains(errStr, "does not exist") ||
-			strings.Contains(errStr, "not found") {
+		// File not found yet — keep waiting up to timeout.
+		if smb.IsNotFound(err) {
 			if waited >= maxWait {
 				return ""
 			}

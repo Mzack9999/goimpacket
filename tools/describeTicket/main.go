@@ -24,13 +24,14 @@ import (
 	"time"
 
 	gokrbasn1 "github.com/jcmturner/gofork/encoding/asn1"
-	"github.com/jcmturner/gokrb5/v8/credentials"
-	"github.com/jcmturner/gokrb5/v8/crypto"
-	"github.com/jcmturner/gokrb5/v8/iana/etypeID"
-	"github.com/jcmturner/gokrb5/v8/iana/flags"
-	"github.com/jcmturner/gokrb5/v8/messages"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/credentials"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/crypto"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/iana/etypeID"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/iana/flags"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/messages"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/types"
 
+	gopflags "github.com/Mzack9999/goimpacket/pkg/flags"
 	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 )
 
@@ -966,7 +967,7 @@ func loadCCacheSafe(path string) (ccache *credentials.CCache, err error) {
 }
 
 func printUsage() {
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(gopflags.Banner())
 	fmt.Println()
 	fmt.Println("Parses a ccache ticket file and displays credential information.")
 	fmt.Println("With a decryption key, decrypts the ticket and shows the full PAC.")

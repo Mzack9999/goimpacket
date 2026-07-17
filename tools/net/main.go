@@ -111,7 +111,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Println(flags.Banner())
 	fmt.Println()
 
 	// Connect via SMB
@@ -196,7 +196,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "gopacket v0.1.0-beta - Copyright 2026 Google LLC")
+	fmt.Fprintln(os.Stderr, flags.Banner())
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Usage: net [auth-flags] target <command> [command-flags]")
 	fmt.Fprintln(os.Stderr)

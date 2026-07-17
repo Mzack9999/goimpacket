@@ -16,9 +16,10 @@ package tds
 
 import (
 	"fmt"
-	"net"
 	"strings"
 	"time"
+
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 // SQLRInstance represents a discovered SQL Server instance
@@ -31,15 +32,10 @@ type SQLRInstance struct {
 	NamedPipe    string
 }
 
-// GetInstances queries the SQL Server Browser service for instances
+// GetInstances queries the SQL Server Browser service for instances.
+// Fails under -proxy because SQL Browser is UDP and cannot be tunneled.
 func GetInstances(server string, timeout time.Duration) ([]SQLRInstance, error) {
-	// Create UDP connection
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", server, SQLRPort))
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := transport.DialUDP(fmt.Sprintf("%s:%d", server, SQLRPort))
 	if err != nil {
 		return nil, err
 	}
@@ -66,15 +62,9 @@ func GetInstances(server string, timeout time.Duration) ([]SQLRInstance, error) 
 	return parseInstanceResponse(buf[:n])
 }
 
-// GetInstancePort queries for a specific instance's port
+// GetInstancePort queries for a specific instance's port. Fails under -proxy (UDP).
 func GetInstancePort(server, instance string, timeout time.Duration) (int, error) {
-	// Create UDP connection
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", server, SQLRPort))
-	if err != nil {
-		return 0, err
-	}
-
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := transport.DialUDP(fmt.Sprintf("%s:%d", server, SQLRPort))
 	if err != nil {
 		return 0, err
 	}

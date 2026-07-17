@@ -35,6 +35,7 @@ import (
 	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 	"github.com/Mzack9999/goimpacket/pkg/session"
 	"github.com/Mzack9999/goimpacket/pkg/smb"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 )
 
 var (
@@ -356,7 +357,14 @@ func discoverParentDC(forestFQDN string, target session.Target, creds *session.C
 		}
 	}
 
-	// Fallback: DNS resolution of forest FQDN
+	// Fallback: DNS resolution of forest FQDN. Disabled under -proxy because
+	// net.LookupHost uses the OS resolver, which would silently bypass the
+	// configured SOCKS5 proxy and leak DNS. Callers should pass the parent DC
+	// explicitly via -parent-dc in that case.
+	if transport.IsProxyConfigured() {
+		fmt.Println("[!] DNS fallback disabled under -proxy, pass parent DC explicitly via -parent-dc")
+		return ""
+	}
 	addrs, err := net.LookupHost(forestFQDN)
 	if err == nil && len(addrs) > 0 {
 		fmt.Printf("[*] DNS resolved %s to %s\n", forestFQDN, addrs[0])

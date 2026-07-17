@@ -17,8 +17,8 @@ package smb
 import (
 	"encoding/asn1"
 
-	"github.com/jcmturner/gokrb5/v8/gssapi"
-	"github.com/jcmturner/gokrb5/v8/types"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/gssapi"
+	"github.com/Mzack9999/goimpacket/pkg/third_party/gokrb5/types"
 	"github.com/Mzack9999/goimpacket/pkg/kerberos"
 	"github.com/Mzack9999/goimpacket/pkg/third_party/smb2"
 )

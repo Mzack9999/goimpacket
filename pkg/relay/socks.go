@@ -447,6 +447,9 @@ func (s *SOCKSServer) handleConnection(conn net.Conn) {
 func (s *SOCKSServer) handleDNSPassthrough(clientConn net.Conn, host string, port int) {
 	target := fmt.Sprintf("%s:%d", host, port)
 
+	// Intentionally uses net.DialTimeout, not transport.DialTimeout: this is
+	// the outbound leg of our own SOCKS5 server, so routing it through the
+	// operator's -proxy would double-tunnel.
 	remotConn, err := net.DialTimeout("tcp", target, 10*time.Second)
 	if err != nil {
 		if build.Debug {

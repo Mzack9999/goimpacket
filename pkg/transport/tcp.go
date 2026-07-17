@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package transport provides a small TCP/TLS dialer used across goimpacket.
+// Package transport provides the shared TCP/TLS dialer used across goimpacket.
 //
-// The default dialer is a pure-Go net.Dialer (no CGO). Embedders that need
-// to route connections through their own stack (custom resolver, proxy chain,
-// network policy) can install a DialFunc via SetDial - the override is
-// honored by all goimpacket subsystems that go through this package.
+// Dial routing priority:
+//  1. Per-instance Dialer.DialFn (embedders / per-execution routing)
+//  2. Package-level SetDial override (global embedder hook / tripwire)
+//  3. SOCKS5 proxy from Configure / ALL_PROXY
+//  4. Platform direct dialer (libc connect on Unix/cgo, net.Dialer elsewhere)
 package transport
 
 import (
@@ -33,7 +34,7 @@ import (
 // DefaultTimeout is the default connect timeout in seconds.
 const DefaultTimeout = 30
 
-// DialFunc is the signature accepted by SetDial.
+// DialFunc is the signature accepted by SetDial and Dialer.DialFn.
 type DialFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 var (
@@ -41,8 +42,12 @@ var (
 	dialOverride DialFunc
 )
 
-// SetDial installs a custom dialer used by Dial/DialTimeout/DialTLS.
-// Pass nil to reset to the standard net.Dialer.
+// SetDial installs a custom dialer used by Dial/DialTimeout/DialTLS/DialContext
+// when no per-instance Dialer.DialFn is set. Pass nil to reset.
+//
+// Embedders (e.g. nuclei) typically install a tripwire here that refuses to
+// dial unless an execution-bound Dialer was used, and pass per-call DialFn
+// via Dialer / NewClientWithDialer / DialTCPWithDialer.
 func SetDial(fn DialFunc) {
 	dialMu.Lock()
 	dialOverride = fn
@@ -55,41 +60,25 @@ func currentDial() DialFunc {
 	return dialOverride
 }
 
-// Dial connects to the address on the named network.
-// The address must be in "host:port" format.
+// Dial opens a TCP connection. Honors SetDial, then the configured proxy, then
+// the platform's direct dialer (libc connect() on Unix/cgo, net.Dialer elsewhere).
 func Dial(network, address string) (net.Conn, error) {
 	return DialTimeout(network, address, DefaultTimeout)
 }
 
-// DialContext connects using the supplied context. The context's deadline
-// supersedes the default timeout. The package-level DialFunc registered with
-// SetDial is honored if installed; otherwise the standard net.Dialer is used.
-func DialContext(ctx context.Context, network, address string) (net.Conn, error) {
-	if _, _, err := splitHostPort(address); err != nil {
-		return nil, err
-	}
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	if d := currentDial(); d != nil {
-		return d(ctx, network, address)
-	}
-	var dlr net.Dialer
-	return dlr.DialContext(ctx, network, address)
-}
-
-// DialTimeout connects with the given timeout in seconds.
+// DialTimeout is Dial with an explicit connect timeout in seconds.
+// A non-positive timeoutSec is normalized to DefaultTimeout so the direct and
+// proxy branches behave consistently.
 func DialTimeout(network, address string, timeoutSec int) (net.Conn, error) {
-	ctx := context.Background()
-	if timeoutSec > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
-		defer cancel()
+	if timeoutSec <= 0 {
+		timeoutSec = DefaultTimeout
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSec)*time.Second)
+	defer cancel()
 	return DialContext(ctx, network, address)
 }
 
-// DialTLS connects then wraps the connection in TLS.
+// DialTLS opens a TCP connection (via SetDial/proxy if configured) and wraps it in TLS.
 func DialTLS(network, address string, config *tls.Config) (*tls.Conn, error) {
 	rawConn, err := Dial(network, address)
 	if err != nil {
@@ -108,28 +97,24 @@ func DialTLS(network, address string, config *tls.Config) (*tls.Conn, error) {
 	return tlsConn, nil
 }
 
-// Dialer provides a way to establish connections. When DialFn is set it is
-// used for every Dial/DialContext on this Dialer instance, bypassing the
-// package-level SetDial override and the stdlib fallback. Embedders should
-// install a DialFn closure that captures any per-call state (e.g. an execution
-// id) needed to route the connection through their preferred transport.
+// Dialer is a value-typed dialer suitable for APIs that expect a struct with a
+// Dial method (e.g. pkg/smb, pkg/ldap). When DialFn is set it is used for every
+// Dial/DialContext on this instance, bypassing the package-level SetDial
+// override, proxy, and stdlib fallback. Embedders should install a DialFn
+// closure that captures any per-call state (e.g. an execution id).
 type Dialer struct {
 	TimeoutSec int
 	DialFn     DialFunc
 }
 
-// Dial establishes a TCP connection to the specified address.
+// Dial establishes a TCP connection to address.
 func (d *Dialer) Dial(network, address string) (net.Conn, error) {
-	timeout := d.TimeoutSec
-	if timeout == 0 {
-		timeout = DefaultTimeout
+	timeout := DefaultTimeout
+	if d != nil && d.TimeoutSec > 0 {
+		timeout = d.TimeoutSec
 	}
-	ctx := context.Background()
-	if timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
-		defer cancel()
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
 	return d.DialContext(ctx, network, address)
 }
 
@@ -145,6 +130,17 @@ func (d *Dialer) DialContext(ctx context.Context, network, address string) (net.
 	if d != nil && d.DialFn != nil {
 		return d.DialFn(ctx, network, address)
 	}
+	return DialContext(ctx, network, address)
+}
+
+// ContextDialer is the value-typed counterpart of Dialer for APIs that expect
+// a DialContext method (e.g. github.com/oiweiwei/go-msrpc/dcerpc.WithDialer,
+// net/http.Transport.DialContext). Respects SetDial and the configured proxy.
+// The zero value works.
+type ContextDialer struct{}
+
+// DialContext routes through SetDial / proxy if set, honoring ctx.
+func (ContextDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	return DialContext(ctx, network, address)
 }
 

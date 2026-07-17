@@ -30,6 +30,7 @@ import (
 
 	"github.com/Mzack9999/goimpacket/pkg/flags"
 	"github.com/Mzack9999/goimpacket/pkg/session"
+	"github.com/Mzack9999/goimpacket/pkg/transport"
 	"github.com/Mzack9999/goimpacket/pkg/wmiexec"
 )
 
@@ -71,7 +72,9 @@ func main() {
 		}
 	}
 
-	sess, err := wmiexec.Dial(context.Background(), target, &creds, wmiexec.DialOptions{})
+	sess, err := wmiexec.Dial(context.Background(), target, &creds, wmiexec.DialOptions{
+		Dialer: transport.ContextDialer{},
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[-] WMI dial failed: %v\n", err)
 		os.Exit(1)
